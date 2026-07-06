@@ -1,157 +1,118 @@
-# SurveyPro - Платформа для создания опросов
+# Survey Platform
 
-React приложение для создания и проведения интерактивных опросов с QR-код доступом и мгновенными результатами.
+Corporate web application for creating, managing, and analyzing employee surveys.
 
-## 🚀 Возможности
-
-- 🎯 **Создание опросов** - Простой интерфейс для создания опросов с 4 вопросами и 4 вариантами ответов
-- 📱 **QR-код доступ** - Участники могут присоединиться к опросу, отсканировав QR-код
-- 📊 **Мгновенные результаты** - Получение результатов в реальном времени с детальной аналитикой
-- 👥 **Управление участниками** - Отслеживание участников и их ответов в личном кабинете
-- 🔒 **Безопасность** - Защищенная авторизация для организаторов
-- 📋 **Детальная отчетность** - Статистика в процентах и анализ ответов
-
-## 📁 Структура проекта
-
-```
-src/
-├── components/
-│   ├── Header.jsx              # Навигация и логотип
-│   ├── Hero.jsx                # Главная секция
-│   ├── Features.jsx            # Возможности платформы
-│   ├── HowItWorks.jsx          # Как это работает
-│   ├── Stats.jsx               # Статистика
-│   ├── CTA.jsx                 # Призыв к действию
-│   ├── Footer.jsx              # Подвал
-│   ├── AuthModal.jsx           # Модальное окно авторизации
-│   ├── CreateSurvey.jsx        # Создание опроса
-│   ├── QRCode.jsx              # Отображение QR-кода
-│   └── shared.css              # Общие стили
-├── App.jsx                     # Главный компонент
-├── main.jsx                    # Точка входа
-└── index.css                   # Глобальные стили
-```
-
-## 🛠 Технологии
-
-- **React 19** - Основной фреймворк
-- **Vite** - Сборщик и dev-сервер
-- **CSS3** - Стилизация компонентов
-- **JavaScript ES6+** - Современный JavaScript
-
-## 🚀 Установка и запуск
-
-1. **Клонируйте репозиторий:**
-```bash
-git clone <repository-url>
-cd oprosnik-design
-```
-
-2. **Установите зависимости:**
-```bash
-npm install
-```
-
-3. **Запустите dev-сервер:**
-```bash
-npm run dev
-```
-
-4. **Откройте браузер по адресу:** `http://localhost:5173`
-
-## 📦 Доступные команды
-
-```bash
-# Запуск dev-сервера
-npm run dev
-
-# Сборка для продакшена
-npm run build
-
-# Предварительный просмотр сборки
-npm run preview
-
-# Проверка кода линтером
-npm run lint
-```
-
-## 🎨 Компоненты
-
-### Header
-Навигационная панель с логотипом и кнопками входа/регистрации.
-
-### Hero
-Главная секция с призывом к действию и описанием платформы.
-
-### Features
-Секция с описанием возможностей платформы (6 карточек).
-
-### HowItWorks
-Пошаговое описание процесса работы с платформой.
-
-### Stats
-Статистика использования платформы.
-
-### CTA
-Секция призыва к действию для создания опроса.
-
-### AuthModal
-Модальное окно для выбора роли (организатор/участник).
-
-### CreateSurvey
-Форма создания нового опроса с 4 вопросами и 4 вариантами ответов.
-
-### QRCode
-Отображение QR-кода для созданного опроса.
-
-## 🔧 Функциональность
-
-### Создание опроса
-1. Нажмите "Начать" или "Создать опрос"
-2. Выберите роль "Организатор"
-3. Заполните форму создания опроса
-4. Получите QR-код для распространения
-
-### Участие в опросе
-1. Выберите роль "Участник"
-2. Отсканируйте QR-код
-3. Введите имя и отвечайте на вопросы
-
-## 📱 Адаптивность
-
-Приложение полностью адаптивно и корректно отображается на:
-- 🖥️ Десктопах
-- 📱 Мобильных устройствах
-- 📱 Планшетах
-
-## 🎯 Особенности
-
-- **Современный дизайн** - Красивый и интуитивный интерфейс
-- **Быстрая работа** - Оптимизированная производительность
-- **Модульная архитектура** - Легко расширяемая структура компонентов
-- **Анимации** - Плавные переходы и эффекты
-- **Доступность** - Поддержка клавиатурной навигации
-
-## 🔮 Планы развития
-
-- [ ] Интеграция с базой данных
-- [ ] Система авторизации
-- [ ] Реальная генерация QR-кодов
-- [ ] Аналитика и отчеты
-- [ ] Экспорт результатов
-- [ ] Многоязычность
-
-## 📄 Лицензия
-
-© 2025 SurveyPro. Все права защищены.
-
-## 🤝 Вклад в проект
-
-1. Форкните репозиторий
-2. Создайте ветку для новой функции
-3. Внесите изменения
-4. Создайте Pull Request
+> This repository is a portfolio version of a project developed during commercial experience. Sensitive business logic and internal infrastructure have been removed.
 
 ---
 
-**Создано с ❤️ для упрощения процесса создания и проведения опросов**
+![React](https://img.shields.io/badge/React-19-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
+![Firebase](https://img.shields.io/badge/Firebase-orange)
+![Redux Toolkit](https://img.shields.io/badge/Redux%20Toolkit-purple)
+![Vite](https://img.shields.io/badge/Vite-yellow)
+
+
+## About
+
+Survey Platform is a web application that allows organizers to create surveys, manage participants, monitor progress, and analyze results through an intuitive interface.
+
+The project was developed using React and TypeScript with Firebase as the backend platform.
+
+---
+
+## Features
+
+### Survey Management
+
+- Create and edit surveys
+- Multiple question types
+- Survey access by code
+- QR-code participation
+- Timer support
+- Result submission
+
+### User Management
+
+- Authentication
+- Organizer accounts
+- Role-based access control
+- Administrator panel
+
+### Analytics
+
+- Survey statistics
+- Participant results
+- Average score calculation
+- Question analytics
+- Error statistics
+- Interactive charts
+
+### User Experience
+
+- Responsive interface
+- Modern UI
+- Form validation
+- Loading states
+- Error handling
+
+---
+
+## Tech Stack
+
+### Frontend
+
+- React
+- TypeScript
+- Vite
+- React Router
+- Redux Toolkit
+- Axios
+- CSS Modules
+
+### Backend
+
+- Firebase Authentication
+- Cloud Firestore
+- Firebase Storage
+
+### Visualization
+
+- Chart.js
+- Recharts
+
+---
+
+## My Contribution
+
+During development I implemented:
+
+- Survey Builder
+- Multiple question types
+- Organizer authentication
+- QR-code authorization
+- Survey code authorization
+- Role management
+- Administrator dashboard
+- Analytics pages
+- Data visualization
+- Responsive UI
+- REST API integration
+
+---
+
+## Getting Started
+
+```bash
+npm install
+npm run dev
+
+## Screenshots
+
+> Screenshots are omitted because the original project contains confidential corporate information.
+
+---
+
+## Disclaimer
+
+This repository is intended solely for demonstrating development experience and technical skills.
