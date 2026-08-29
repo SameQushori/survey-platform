@@ -1,0 +1,24 @@
+/* CTA Section */
+.cta {
+  padding: 80px 20px;
+  background: white;
+  text-align: center;
+}
+
+.cta-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.cta h2 {
+  font-size: 36px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #2d3748;
+}
+
+.cta p {
+  font-size: 18px;
+  color: #718096;
+  margin-bottom: 40px;
+} 

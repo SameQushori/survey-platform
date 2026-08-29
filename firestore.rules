@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Разрешаем доступ ко всем коллекциям для разработки
+    // В продакшене нужно настроить более строгие правила
+    match /{document=**} {
+      allow read, write: if true;
+    }
+    
+    // Альтернативные правила для продакшена (закомментированы):
+    /*
+    // Правила для коллекции surveys
+    match /surveys/{surveyId} {
+      allow read: if true; // Все могут читать опросы
+      allow write: if request.auth != null; // Только авторизованные могут создавать/редактировать
+    }
+    
+    // Правила для коллекции responses
+    match /responses/{responseId} {
+      allow read: if request.auth != null; // Только авторизованные могут читать ответы
+      allow write: if true; // Все могут отправлять ответы
+    }
+    
+    // Правила для коллекции admins
+    match /admins/{adminId} {
+      allow read, write: if request.auth != null; // Только авторизованные администраторы
+    }
+    */
+  }
+} 

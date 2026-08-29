@@ -1,0 +1,132 @@
+/* QR Code Modal */
+.qr-modal {
+  display: block;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
+  backdrop-filter: blur(5px);
+}
+
+.qr-content {
+  background-color: white;
+  margin: 5% auto;
+  padding: 0;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  animation: slideIn 0.3s ease;
+}
+
+.qr-header {
+  background: linear-gradient(45deg, #2b6cb0, #3182ce);
+  color: white;
+  padding: 20px;
+  border-radius: 12px 12px 0 0;
+  text-align: center;
+}
+
+.qr-body {
+  padding: 30px;
+  text-align: center;
+}
+
+.qr-code-placeholder {
+  margin: 20px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.qr-code {
+  width: 200px;
+  height: 200px;
+  background: white;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  position: relative;
+}
+
+.qr-pattern {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.qr-corner {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border: 3px solid #2b6cb0;
+}
+
+.qr-corner.top-left {
+  top: 0;
+  left: 0;
+  border-right: none;
+  border-bottom: none;
+}
+
+.qr-corner.top-right {
+  top: 0;
+  right: 0;
+  border-left: none;
+  border-bottom: none;
+}
+
+.qr-corner.bottom-left {
+  bottom: 0;
+  left: 0;
+  border-right: none;
+  border-top: none;
+}
+
+.qr-dots {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  width: 80px;
+  height: 80px;
+}
+
+.qr-dot {
+  width: 8px;
+  height: 8px;
+  background: #2b6cb0;
+  border-radius: 50%;
+}
+
+.qr-instructions {
+  margin: 20px 0;
+  color: #718096;
+  font-size: 16px;
+}
+
+.qr-link {
+  margin: 15px 0;
+  padding: 10px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  word-break: break-all;
+}
+
+.qr-link span {
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.qr-link a {
+  color: #2b6cb0;
+  text-decoration: none;
+}
+
+.qr-link a:hover {
+  text-decoration: underline;
+} 

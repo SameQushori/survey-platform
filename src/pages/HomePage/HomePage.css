@@ -1,0 +1,73 @@
+.code-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.code-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px 24px 24px 24px;
+  min-width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  position: relative;
+  text-align: center;
+}
+
+.code-modal-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #666;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  z-index: 10;
+  border: 1px solid #e1e5e9;
+}
+
+.code-modal-close:hover {
+  background-color: #f0f0f0;
+  color: #333;
+  border-color: #ccc;
+}
+
+.code-modal h2 {
+  margin-bottom: 18px;
+  color: #2b6cb0;
+  font-size: 22px;
+}
+
+.code-input {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 16px;
+  margin-bottom: 8px;
+  text-align: center;
+  transition: border-color 0.2s;
+  color: #333;
+  background-color: white;
+}
+.code-input:focus {
+  outline: none;
+  border-color: #2b6cb0;
+}
+
+.code-input::placeholder {
+  color: #999;
+} 

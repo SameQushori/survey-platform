@@ -1,0 +1,64 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+!.dev.vars.*.example
+*.pem
+*.key
+service-account*.json
+firebase-adminsdk*.json
+
+# Cloudflare local state
+.wrangler/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Test and build artifacts
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.vitest/
+.vite/
+*.tsbuildinfo
+
+# Local AI/agent working files (product documentation remains tracked)
+.codex/
+.agents/
+.claude/
+.cursor/
+.ai/
+ai-artifacts/
+imagegen-output/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

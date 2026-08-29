@@ -1,0 +1,93 @@
+/* Header */
+.header {
+  background: white;
+  border-bottom: 1px solid #e9ecef;
+  padding: 0 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 70px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  font-size: 24px;
+  font-weight: bold;
+  color: #2b6cb0;
+  text-decoration: none;
+}
+
+.logo-icon-wrapper {
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 15px;
+}
+
+.nav-buttons .btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.nav-buttons .btn-outline {
+  background: white;
+  color: #2b6cb0;
+  border: 1px solid #2b6cb0;
+}
+
+.nav-buttons .btn-outline:hover {
+  background: #2b6cb0;
+  color: white;
+}
+
+.nav-buttons .btn-primary {
+  background: #2b6cb0;
+  color: white;
+}
+
+.nav-buttons .btn-primary:hover {
+  background: #2c5282;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .nav-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .header-content {
+    flex-direction: column;
+    height: auto;
+    padding: 15px 0;
+  }
+}
