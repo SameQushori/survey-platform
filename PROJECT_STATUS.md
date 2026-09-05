@@ -4,7 +4,7 @@
 
 Версия: **1.0.0 release candidate**
 
-Текущая фаза: **Phase 11 external UAT + Phase 12 delivery**
+Текущая фаза: **Phase 11 external UAT; Phase 12 завершена**
 
 Этот файл — каноническая точка продолжения в другом чате. Сначала прочитать его, затем `docs/STRICT_DEVELOPMENT_PLAN.md`, `docs/DECISIONS.md` и проверить фактический `git status`.
 
@@ -73,7 +73,7 @@
 2. Настроить четыре production secrets только интерактивно, без shell history/Git.
 3. Выполнить `build:production:public` → dry-run → deploy, затем `build:production:organizer` → dry-run → deploy.
 4. Проверить health, anonymous session `401`, login/OTP, authoring/publish, participant submit, results/export и rollback.
-5. Git: commit/push `feat/vecta-rebuild`, открыть один breaking-change PR в `main`; CI должен быть зелёным, merge только после review.
+5. Провести review PR #1 и merge только по решению владельца.
 
 ## Фазы
 
@@ -89,9 +89,11 @@
 - [x] Phase 9 — Hardening and Quality Gate
 - [x] Phase 10 — Firebase Retirement
 - [ ] Phase 11 — code/resources ready; external OTP/performance UAT and production secrets/deploy remain
-- [ ] Phase 12 — docs/CI/profile README ready; main repository commit/push/PR remain
+- [x] Phase 12 — repository finalized; branch pushed, PR #1 открыт, GitHub Actions зелёный
 
 Профильный репозиторий `SameQushori/SameQushori` обновлён: Vecta добавлена первой в Featured Projects, commit `9442d3f` отправлен в `main`.
+
+Основной репозиторий: breaking-change commit `5a79af6`, CI fix `4211c82`, ветка `feat/vecta-rebuild` отправлена; PR <https://github.com/SameQushori/survey-platform/pull/1> открыт в `main`, оба quality checks прошли. PR не merge-ился.
 
 ## Правила продолжения
 
