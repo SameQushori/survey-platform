@@ -83,7 +83,7 @@
 - [x] Phase 2 — Domain, API and Database Contract
 - [x] Phase 3 — UX Logic and Visual Direction
 - [x] Phase 4 — Cloudflare Foundation
-- [x] Phase 5 — Identity and Administration
+- [x] Phase 5 — Identity and tenant authorization
 - [x] Phase 6 — Assessment Authoring and Publishing
 - [x] Phase 7 — Participant Attempt
 - [x] Phase 8 — Results, Analytics and Export
@@ -94,7 +94,7 @@
 
 Профильный репозиторий `SameQushori/SameQushori` обновлён: Vecta добавлена первой в Featured Projects, commit `9442d3f` отправлен в `main`.
 
-Основной репозиторий: breaking-change commit `5a79af6`, CI fix `4211c82`, ветка `feat/vecta-rebuild` отправлена; PR <https://github.com/SameQushori/survey-platform/pull/1> открыт в `main`, оба quality checks прошли. PR не merge-ился.
+Основной репозиторий: открытая регистрация и удаление Super Admin зафиксированы commit `7b6bc0c` в `feat/vecta-rebuild`; PR <https://github.com/SameQushori/survey-platform/pull/1> открыт в `main`, mergeable, оба quality checks прошли. PR не merge-ился.
 
 ## Правила продолжения
 
