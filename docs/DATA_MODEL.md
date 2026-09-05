@@ -1,6 +1,6 @@
 # Vecta — D1 Data Model
 
-Источник schema: последовательные migrations `migrations/0001_initial.sql`–`0005_organizer_email_auth.sql`.
+Источник schema: последовательные migrations `migrations/0001_initial.sql`–`0006_open_organizer_registration.sql`.
 
 ## Принципы
 
@@ -78,6 +78,8 @@ Zod проверяет payload до SQL. SQL использует только p
 - Challenge хранит только HMAC digest кода, expiry, state и bounded failed-attempt counter.
 - Session хранит только HMAC digest высокоэнтропийного cookie token, expiry и revocation timestamp.
 - Raw OTP и session token не записываются в D1; ротация `AUTH_TOKEN_SECRET` инвалидирует оба класса credentials.
+- `0006_open_organizer_registration.sql` обнуляет legacy `users.platform_role`: колонка остаётся только для совместимого forward-only перехода и не используется приложением.
+- При первом подтверждении нового email Worker создаёт пользователя, личную организацию и organizer membership; отказ доставки удаляет provisional user без membership/session.
 
 ## Platform references
 

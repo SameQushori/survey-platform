@@ -1,5 +1,5 @@
 import { getRequestId, jsonResponse, methodNotAllowed, problemResponse } from "./http";
-import { routeAuthorizedApi } from "./admin";
+import { routeAuthorizedApi } from "./organizer";
 import { authenticateRequest, IdentityError } from "./auth";
 import { AuthorizationError, resolveSession } from "./session";
 import { routeParticipantApi } from "./participant";

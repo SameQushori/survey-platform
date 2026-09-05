@@ -22,6 +22,7 @@ const maxFailedAttempts = 5;
 interface LoginUserRow {
   id: string;
   email: string;
+  status: "active" | "disabled";
 }
 
 interface ChallengeRow {
@@ -79,7 +80,14 @@ function loginEmail(code: string): { html: string; subject: string; text: string
   return { html, subject, text };
 }
 
-async function deliverLoginCode(env: Env, challengeId: string, userId: string, email: string, code: string): Promise<void> {
+async function deliverLoginCode(
+  env: Env,
+  challengeId: string,
+  userId: string,
+  email: string,
+  code: string,
+  removeProvisionalUserOnFailure: boolean,
+): Promise<void> {
   try {
     if (!emailDeliveryConfigured(env)) throw new Error("Email delivery is not configured");
     const controller = new AbortController();
@@ -109,9 +117,19 @@ async function deliverLoginCode(env: Env, challengeId: string, userId: string, e
     }
     if (!response.ok) throw new EmailProviderError(response.status);
   } catch (error) {
-    await env.DB.prepare("DELETE FROM organizer_auth_challenges WHERE id = ?1 AND status = 'active'")
-      .bind(challengeId)
-      .run();
+    const cleanup: D1PreparedStatement[] = [
+      env.DB.prepare("DELETE FROM organizer_auth_challenges WHERE id = ?1 AND status = 'active'").bind(challengeId),
+    ];
+    if (removeProvisionalUserOnFailure) {
+      cleanup.push(env.DB.prepare(
+        `DELETE FROM users
+         WHERE id = ?1
+           AND auth_subject LIKE 'pending:%'
+           AND NOT EXISTS (SELECT 1 FROM memberships WHERE user_id = ?1)
+           AND NOT EXISTS (SELECT 1 FROM organizer_auth_sessions WHERE user_id = ?1)`,
+      ).bind(userId));
+    }
+    await env.DB.batch(cleanup);
     console.error(JSON.stringify({
       event: "organizer_login_email_failed",
       challengeId,
@@ -119,6 +137,33 @@ async function deliverLoginCode(env: Env, challengeId: string, userId: string, e
       errorName: error instanceof Error ? error.name : "UnknownError",
       providerStatus: error instanceof EmailProviderError ? error.status : null,
     }));
+  }
+}
+
+async function findOrCreateLoginUser(env: Env, email: string, now: number): Promise<LoginUserRow & { created: boolean }> {
+  const existing = await env.DB.prepare(
+    "SELECT id, email, status FROM users WHERE lower(email) = ?1",
+  ).bind(email).first<LoginUserRow>();
+
+  if (existing) {
+    return { ...existing, created: false };
+  }
+
+  const userId = `user_${crypto.randomUUID()}`;
+  try {
+    await env.DB.prepare(
+      `INSERT INTO users
+       (id, auth_subject, email, display_name, platform_role, status, created_at, updated_at)
+       VALUES (?1, ?2, ?3, 'Организатор', NULL, 'active', ?4, ?4)`,
+    ).bind(userId, `pending:${email}`, email, now).run();
+    return { id: userId, email, status: "active", created: true };
+  } catch (error) {
+    if (!(error instanceof Error) || !error.message.includes("UNIQUE")) throw error;
+    const concurrent = await env.DB.prepare(
+      "SELECT id, email, status FROM users WHERE lower(email) = ?1",
+    ).bind(email).first<LoginUserRow>();
+    if (!concurrent) throw error;
+    return { ...concurrent, created: false };
   }
 }
 
@@ -153,29 +198,23 @@ async function requestCode(request: Request, env: Env, ctx: ExecutionContext, re
   const expiresAt = now + challengeLifetimeMs;
   const challengeId = `challenge_${crypto.randomUUID()}`;
   const body: OrganizerLoginChallengeDTO = { challengeId, expiresAt };
-  const user = await env.DB.prepare(
-    `SELECT u.id, u.email
-     FROM users u
-     WHERE lower(u.email) = ?1
-       AND u.status = 'active'
-       AND (u.platform_role = 'super_admin' OR EXISTS (
-         SELECT 1 FROM memberships m WHERE m.user_id = u.id AND m.status = 'active'
-       ))`,
-  ).bind(parsed.data.email).first<LoginUserRow>();
-
-  if (user?.email) {
-    const code = oneTimeCode();
-    const codeDigest = await authSecretDigest(env, "organizer-login-code", `${challengeId}:${code}`);
-    await env.DB.batch([
-      env.DB.prepare("UPDATE organizer_auth_challenges SET status = 'expired' WHERE user_id = ?1 AND status = 'active'").bind(user.id),
-      env.DB.prepare(
-        `INSERT INTO organizer_auth_challenges
-         (id, user_id, code_digest, status, failed_attempts, expires_at, created_at)
-         VALUES (?1, ?2, ?3, 'active', 0, ?4, ?5)`,
-      ).bind(challengeId, user.id, codeDigest, expiresAt, now),
-    ]);
-    ctx.waitUntil(deliverLoginCode(env, challengeId, user.id, user.email, code));
+  const emailDigest = await authSecretDigest(env, "login-email", parsed.data.email);
+  if (!(await allowedByRateLimit(env, `request-code-email:${emailDigest}`))) {
+    return problemResponse({ code: "rate_limited", headers: { "Retry-After": "60" }, requestId, status: 429, title: "Слишком много запросов кода" });
   }
+
+  const user = await findOrCreateLoginUser(env, parsed.data.email, now);
+  const code = oneTimeCode();
+  const codeDigest = await authSecretDigest(env, "organizer-login-code", `${challengeId}:${code}`);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE organizer_auth_challenges SET status = 'expired' WHERE user_id = ?1 AND status = 'active'").bind(user.id),
+    env.DB.prepare(
+      `INSERT INTO organizer_auth_challenges
+       (id, user_id, code_digest, status, failed_attempts, expires_at, created_at)
+       VALUES (?1, ?2, ?3, 'active', 0, ?4, ?5)`,
+    ).bind(challengeId, user.id, codeDigest, expiresAt, now),
+  ]);
+  ctx.waitUntil(deliverLoginCode(env, challengeId, user.id, user.email, code, user.created));
 
   return jsonResponse(body, requestId, { status: 202 });
 }
@@ -229,9 +268,32 @@ async function verifyCode(request: Request, env: Env, requestId: string): Promis
   const sessionToken = opaqueToken(32);
   const sessionDigest = await authSecretDigest(env, "session", sessionToken);
   const expiresAt = now + sessionLifetimeMs;
+  const existingMembership = await env.DB.prepare(
+    `SELECT id FROM memberships WHERE user_id = ?1 AND status = 'active' LIMIT 1`,
+  ).bind(challenge.user_id).first<{ id: string }>();
+  const organizationId = `org_${crypto.randomUUID()}`;
+  const setup: D1PreparedStatement[] = [];
+  if (!existingMembership) {
+    setup.push(
+      env.DB.prepare(
+        `INSERT INTO organizations (id, name, slug, status, created_at, updated_at)
+         VALUES (?1, 'Личное пространство', ?2, 'active', ?3, ?3)`,
+      ).bind(organizationId, `workspace-${crypto.randomUUID()}`, now),
+      env.DB.prepare(
+        `INSERT INTO memberships (id, organization_id, user_id, role, status, created_at, updated_at)
+         VALUES (?1, ?2, ?3, 'organizer', 'active', ?4, ?4)`,
+      ).bind(`membership_${crypto.randomUUID()}`, organizationId, challenge.user_id, now),
+      env.DB.prepare(
+        `INSERT INTO audit_log
+         (id, organization_id, actor_user_id, action, entity_type, entity_id, request_id, metadata_json, created_at)
+         VALUES (?1, ?2, ?3, 'account.registered', 'user', ?3, ?4, '{}', ?5)`,
+      ).bind(`audit_${crypto.randomUUID()}`, organizationId, challenge.user_id, requestId, now),
+    );
+  }
   await env.DB.batch([
     env.DB.prepare("UPDATE users SET auth_subject = ?1, updated_at = ?2 WHERE id = ?3 AND auth_subject LIKE 'pending:%'")
       .bind(`app:${challenge.user_id}`, now, challenge.user_id),
+    ...setup,
     env.DB.prepare(
       `INSERT INTO organizer_auth_sessions
        (id, user_id, token_digest, expires_at, created_at, last_seen_at)

@@ -15,8 +15,8 @@ Vecta — русскоязычная assessment-first платформа для 
 - Публикации с неизменяемыми версиями, открытым кодом/QR или одноразовыми приглашениями.
 - Восстанавливаемые попытки, серверный дедлайн, последовательное сохранение ответов и идемпотентная отправка.
 - Результаты, анализ вопросов, история публикаций, поиск, пагинация и защищённый CSV-экспорт.
-- Вход организаторов по одноразовому шестизначному коду на заранее разрешённый email.
-- Super Admin управление организаторами и строгая tenant/membership authorization.
+- Открытая регистрация по email: после подтверждения шестизначного кода пользователь получает личное пространство организатора.
+- Строгая tenant/membership authorization без общей привилегированной Super Admin-роли.
 - Responsive UI, keyboard drag-and-drop, focus-trapped dialogs и доступные таблицы/графики.
 
 ## Стек и архитектура
@@ -24,7 +24,7 @@ Vecta — русскоязычная assessment-first платформа для 
 - React 19, TypeScript strict, React Router, dnd-kit, Manrope и Phosphor Icons.
 - Cloudflare Worker + Static Assets; `/api/*` всегда исполняется сервером.
 - Cloudflare D1 с последовательными миграциями и immutable publication snapshots.
-- Turnstile, Cloudflare Rate Limiting, HMAC/JOSE, HttpOnly sessions и Resend email OTP.
+- Бесплатный Cloudflare Turnstile, Cloudflare Rate Limiting, HMAC/JOSE, HttpOnly sessions и Resend email OTP.
 - Vitest для unit-тестов и Cloudflare Vitest plugin для Worker/D1 integration-тестов.
 
 ```text
@@ -64,7 +64,7 @@ npm run dev
 npm run quality
 ```
 
-Gate включает typecheck, ESLint с `no-floating-promises`, 32 unit-теста, 36 Worker/D1 integration-тестов, production build и полный `npm audit`. GitHub Actions запускает тот же набор на push и pull request.
+Gate включает typecheck, ESLint с `no-floating-promises`, unit-тесты, Worker/D1 integration-тесты, production build и полный `npm audit`. GitHub Actions запускает тот же набор на push и pull request.
 
 После изменения Cloudflare bindings:
 

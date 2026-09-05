@@ -78,24 +78,17 @@ Response соответствует `CreateAttemptResponse`. `assessment.questio
 - При истёкшем deadline Worker сначала переводит Attempt в `expired` и финализирует сохранённые ответы согласно Product Spec.
 - Response показывает score только при `showParticipantResult=true`.
 
-## Session и administration
+## Session и регистрация
 
 | Method | Route | Доступ | Назначение |
 |---|---|---|---|
-| `POST` | `/auth/request-code` | Public + Turnstile | Принять email и вернуть generic challenge; для заранее добавленного пользователя асинхронно отправить OTP |
-| `POST` | `/auth/verify-code` | Public + rate limit | Однократно проверить шестизначный OTP и выдать HttpOnly session cookie |
+| `POST` | `/auth/request-code` | Public + Turnstile + rate limits | Принять любой валидный email, создать provisional user при необходимости и асинхронно отправить OTP |
+| `POST` | `/auth/verify-code` | Public + rate limit | Однократно проверить OTP; при первом входе создать личную организацию/membership и выдать HttpOnly session cookie |
 | `POST` | `/auth/logout` | Session + same-origin marker | Отозвать текущую server-side session и очистить cookie |
-| `POST` | `/auth/logout` | Organizer session | Отозвать server-side session и очистить cookie |
-| `GET` | `/session` | Organizer/Super Admin | Текущая identity и memberships |
-| `GET` | `/organizations` | Super Admin | Список организаций |
-| `POST` | `/organizations` | Super Admin | Создать организацию |
-| `PATCH` | `/organizations/:organizationId` | Super Admin | Изменить/деактивировать организацию |
-| `GET` | `/organizations/:organizationId/workspace` | Organizer member/Super Admin | Проверенный tenant context для shell |
-| `GET` | `/organizations/:organizationId/members` | Super Admin | Memberships организации |
-| `POST` | `/organizations/:organizationId/members` | Super Admin | Назначить organizer identity |
-| `PATCH` | `/organizations/:organizationId/members/:membershipId` | Super Admin | Активировать/деактивировать membership |
+| `GET` | `/session` | Organizer session | Текущая identity и memberships |
+| `GET` | `/organizations/:organizationId/workspace` | Organizer member | Проверенный tenant context для shell |
 
-Целевой вход: заранее добавленный email, Turnstile, одноразовый шестизначный код на 10 минут и лимит 5 запросов/проверок в минуту на IP. Ответ `request-code` не раскрывает существование пользователя; доставка запускается через `ExecutionContext.waitUntil`. D1 хранит только HMAC digest OTP и session token. После успеха Worker выдаёт 12-часовую `__Host-vecta_session` cookie (`Secure`, `HttpOnly`, `SameSite=Lax`), а права повторно проверяются по D1 user/membership. Email OTP развёрнут на Organizer staging; старый access-code secret остаётся только rollback boundary до ручного owner UAT.
+Целевой вход: открытая регистрация по email, бесплатный Turnstile, одноразовый шестизначный код на 10 минут и лимиты запросов по IP/email. Доставка запускается через `ExecutionContext.waitUntil`. D1 хранит только HMAC digest OTP и session token. После успеха Worker выдаёт 12-часовую `__Host-vecta_session` cookie (`Secure`, `HttpOnly`, `SameSite=Lax`), а права повторно проверяются по D1 membership. Платформенной Super Admin-роли и соответствующих endpoints нет.
 
 ## Assessment authoring
 

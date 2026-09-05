@@ -17,7 +17,7 @@
 | --- | --- | --- | --- |
 | Подмена Organizer identity или роли | Доступ к чужой организации | Высокоэнтропийный session token хранится только в `Secure; HttpOnly; SameSite=Lax` cookie, D1 содержит HMAC digest; права разрешаются из D1 | Проверить expiry и logout/revocation на staging |
 | Перебор organizer OTP | Захват индивидуальной identity | OTP 6 цифр / 10 минут / один вход, максимум 5 неудачных проверок, rate limit по IP, Turnstile action/hostname; D1 хранит HMAC digest | Проверить реальные лимиты и доставку на staging |
-| Перечисление organizer email | Раскрытие состава команды | `request-code` всегда возвращает generic 202/challenge; доставка известному пользователю уходит через `waitUntil`; логи не содержат email | Выполнить timing/content negative UAT на staging |
+| Массовая регистрация / email bombing | Расход квоты и нежелательные письма | Turnstile Free, раздельные rate limits по IP и HMAC-digest email, одно активное challenge на user; логи не содержат email | Настроить verified sender и проверить реальные лимиты на staging |
 | IDOR / tenant escape | Чтение или изменение чужих тестов и результатов | Organization ID не принимается как источник полномочий; ownership выводится server-side, каждый route проходит membership check | Повторить cross-tenant UAT на staging |
 | Утечка answer key | Компрометация теста | Публичный resolve не отдаёт вопросы; participant DTO не содержит answer key, `isCorrect` или внутренних points | Контролировать новые DTO при будущих изменениях |
 | Кража кода или invitation token из БД | Несанкционированная попытка | В D1 сохраняются только HMAC digests; plaintext возвращается один раз; controlled invitation одноразовый | Защитить Worker secrets и журналы Cloudflare |
@@ -36,6 +36,7 @@
 - Turnstile отклоняет неверные action/hostname и ограничивает token 2048 символами; transient Siteverify повторяется не более одного раза с тем же idempotency key.
 - Rate-limit integration test подтверждает отклонение 21-го resolve-запроса после 20 разрешённых запросов.
 - Organizer session принимает только непросроченный и неотозванный token digest; raw session token отсутствует в D1.
+- Открытая регистрация не принимает роль/organization ID с клиента; личное пространство создаётся сервером после подтверждения OTP, а disabled user не реактивируется самостоятельно.
 - Participant payload и результат не раскрывают правильные ответы.
 - CSV tenant boundary и formula neutralization покрыты Worker/D1 integration tests.
 

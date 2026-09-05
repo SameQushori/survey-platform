@@ -92,7 +92,7 @@ import {
 } from './domain';
 import { RevisionSaveQueue } from './revisionQueue';
 import { clearOrganizerOtpDigit, emptyOrganizerOtp, fillOrganizerOtp, normalizeOrganizerOtp, ORGANIZER_OTP_LENGTH } from './otpCode';
-import { abandonParticipantAttempt, addOrganizationMember, ApiRequestError, closePublication, createAssessment, createInvitationBatch, createOrganization, createParticipantAttempt, downloadResultsCsv, getAssessmentDraft, getAssessments, getDistribution, getInvitations, getOrganizationMembers, getOrganizations, getOrganizerAttemptDetail, getOrganizerAttempts, getOrganizerLoginUrl, getOrganizerSession, getOrganizationWorkspace, getParticipantAttempt, getPublicRuntimeConfig, getQuestionAnalysis, getResultsOverview, logoutOrganizer, publishAssessment, reopenPublication, requestOrganizerLoginCode, resolvePublication, reviseAssessment, revokeInvitation, rotatePublicationCode, saveParticipantAnswer, startOrganizerLogin, submitParticipantAttempt, updateAssessmentDraft, updateOrganizationMemberStatus, verifyOrganizerLoginCode, type LocalIdentityRole } from './api';
+import { abandonParticipantAttempt, ApiRequestError, closePublication, createAssessment, createInvitationBatch, createParticipantAttempt, downloadResultsCsv, getAssessmentDraft, getAssessments, getDistribution, getInvitations, getOrganizerAttemptDetail, getOrganizerAttempts, getOrganizerLoginUrl, getOrganizerSession, getParticipantAttempt, getPublicRuntimeConfig, getQuestionAnalysis, getResultsOverview, logoutOrganizer, publishAssessment, reopenPublication, requestOrganizerLoginCode, resolvePublication, reviseAssessment, revokeInvitation, rotatePublicationCode, saveParticipantAnswer, startOrganizerLogin, submitParticipantAttempt, updateAssessmentDraft, verifyOrganizerLoginCode, type LocalIdentityRole } from './api';
 import { requiresOrganizerHandoff } from './organizerLogin';
 import type { AssessmentDraftDTO, AssessmentListItemDTO, AttemptStateDTO, CreatedInvitationDTO, DistributionDTO, InvitationDTO, OrganizerAttemptDetailDTO, OrganizerAttemptListItemDTO, OrganizerSessionDTO, ParticipantResultDTO, PublicAssessmentDTO, PublishAssessmentResponse, QuestionAnalysisDTO, QuestionAnalysisItemDTO, ResolvedPublicationDTO, ResultsOverviewDTO, SaveAnswerRequest } from '../../shared/contracts';
 import './vecta.css';
@@ -300,7 +300,7 @@ function OnboardingPage() {
               </div>
             </div>
             <button className="button button-primary button-wide" onClick={startOrganizerLogin}>
-              Войти в рабочее пространство
+              Войти или зарегистрироваться
             </button>
 
             <div className="entry-divider"><span>или</span></div>
@@ -1521,14 +1521,14 @@ function OrganizerLoginDialog() {
       <section ref={dialogRef} className="dialog public-overlay-dialog organizer-login-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={copyId} tabIndex={-1}>
         <button className="icon-button public-dialog-close" onClick={close} aria-label="Закрыть"><X aria-hidden /></button>
         <span className="soft-icon soft-icon-blue"><ShieldCheck aria-hidden /></span>
-        <p className="eyebrow">Вход организатора</p>
-        <h2 id={titleId}>{step === 'email' ? 'Войдите по рабочей почте' : 'Введите код из письма'}</h2>
-        <p id={copyId} className="public-dialog-copy">{step === 'email' ? 'Отправим одноразовый код. Доступ получат только заранее добавленные организаторы.' : `Мы отправили шестизначный код на ${email}. Он действует 10 минут.`}</p>
+        <p className="eyebrow">Вход и регистрация</p>
+        <h2 id={titleId}>{step === 'email' ? 'Продолжите по email' : 'Введите код из письма'}</h2>
+        <p id={copyId} className="public-dialog-copy">{step === 'email' ? 'Отправим одноразовый код. Если аккаунта ещё нет, после подтверждения создадим личное рабочее пространство.' : `Мы отправили шестизначный код на ${email}. Он действует 10 минут.`}</p>
         {import.meta.env.DEV ? (
           <button ref={localButtonRef} className="button button-primary button-wide" onClick={localLogin}>Продолжить локально</button>
         ) : (
           <form className="organizer-login-form" onSubmit={submit} noValidate>
-            {step === 'email' ? <><label className="field-label" htmlFor="organizer-email">Рабочая почта</label><input ref={inputRef} id="organizer-email" type="email" className={error ? 'text-input input-error' : 'text-input'} autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@company.ru" aria-describedby={error ? 'organizer-login-error' : 'organizer-email-help'} /><p className="field-help" id="organizer-email-help">Регистрация не требуется — аккаунт создаёт администратор</p><TurnstileWidget key={turnstileVersion} action="organizer_login" onToken={onTurnstileToken} /></> : <><fieldset className="organizer-otp-fieldset"><legend className="field-label">Код из письма</legend><div className={error ? 'organizer-otp-grid has-error' : 'organizer-otp-grid'}>{codeDigits.map((digit, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; if (index === 0) inputRef.current = element; }} type="text" className={digit ? 'organizer-otp-cell is-filled' : 'organizer-otp-cell'} autoComplete={index === 0 ? 'one-time-code' : 'off'} inputMode="numeric" pattern="[0-9]*" maxLength={index === 0 ? ORGANIZER_OTP_LENGTH : 1} value={digit} onChange={(event) => updateOtpCell(index, event.target.value)} onPaste={(event) => pasteOtp(index, event)} onKeyDown={(event) => navigateOtp(index, event)} onFocus={(event) => event.currentTarget.select()} aria-label={`Цифра ${index + 1} из ${ORGANIZER_OTP_LENGTH}`} aria-invalid={Boolean(error)} aria-describedby={error ? 'organizer-login-error' : 'organizer-code-help'} />)}</div></fieldset><p className="field-help" id="organizer-code-help">Не пересылайте код другим людям</p><div className="login-delivery-note"><EnvelopeSimple aria-hidden /><p><strong>Письмо не видно?</strong><span>Проверьте папку «Спам» — первое сообщение иногда попадает туда.</span></p></div></>}
+            {step === 'email' ? <><label className="field-label" htmlFor="organizer-email">Email</label><input ref={inputRef} id="organizer-email" type="email" className={error ? 'text-input input-error' : 'text-input'} autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" aria-describedby={error ? 'organizer-login-error' : 'organizer-email-help'} /><p className="field-help" id="organizer-email-help">Новый аккаунт создастся после подтверждения почты</p><TurnstileWidget key={turnstileVersion} action="organizer_login" onToken={onTurnstileToken} /></> : <><fieldset className="organizer-otp-fieldset"><legend className="field-label">Код из письма</legend><div className={error ? 'organizer-otp-grid has-error' : 'organizer-otp-grid'}>{codeDigits.map((digit, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; if (index === 0) inputRef.current = element; }} type="text" className={digit ? 'organizer-otp-cell is-filled' : 'organizer-otp-cell'} autoComplete={index === 0 ? 'one-time-code' : 'off'} inputMode="numeric" pattern="[0-9]*" maxLength={index === 0 ? ORGANIZER_OTP_LENGTH : 1} value={digit} onChange={(event) => updateOtpCell(index, event.target.value)} onPaste={(event) => pasteOtp(index, event)} onKeyDown={(event) => navigateOtp(index, event)} onFocus={(event) => event.currentTarget.select()} aria-label={`Цифра ${index + 1} из ${ORGANIZER_OTP_LENGTH}`} aria-invalid={Boolean(error)} aria-describedby={error ? 'organizer-login-error' : 'organizer-code-help'} />)}</div></fieldset><p className="field-help" id="organizer-code-help">Не пересылайте код другим людям</p><div className="login-delivery-note"><EnvelopeSimple aria-hidden /><p><strong>Письмо не видно?</strong><span>Проверьте папку «Спам» — первое сообщение иногда попадает туда.</span></p></div></>}
             {error && <p className="field-error" id="organizer-login-error" role="alert">{error}</p>}
             <button className="button button-primary button-wide" disabled={submitting || (step === 'email' ? !turnstileToken : code.length !== 6)}>{submitting ? (step === 'email' ? 'Отправляем…' : 'Проверяем…') : (step === 'email' ? 'Получить код' : 'Войти')}</button>
             {step === 'code' && <button className="text-action login-change-email" type="button" onClick={changeEmail}>Изменить email или отправить новый код</button>}
@@ -1548,7 +1548,7 @@ function PublicSystemPage({ kind }: { kind: 'login' | 'denied' | 'not-found' }) 
     if (handoffOrganizerLogin) window.location.replace(organizerLoginTarget);
   }, [handoffOrganizerLogin, organizerLoginTarget]);
   if (kind === 'login') return handoffOrganizerLogin ? <OnboardingPage /> : <><OnboardingPage /><OrganizerLoginDialog /></>;
-  const content = kind === 'denied' ? { eyebrow: 'Нет доступа', title: 'Рабочее пространство недоступно', copy: 'У этой учётной записи нет роли Organizer или Super Admin. Обратитесь к администратору вашей организации.', action: 'Завершить сессию' } : { eyebrow: 'Ошибка 404', title: 'Такой страницы нет', copy: 'Возможно, ссылка устарела или адрес был скопирован не полностью.', action: 'На главную Vecta' };
+  const content = kind === 'denied' ? { eyebrow: 'Нет доступа', title: 'Рабочее пространство недоступно', copy: 'Не удалось создать или открыть личное пространство. Завершите сессию и повторите регистрацию.', action: 'Завершить сессию' } : { eyebrow: 'Ошибка 404', title: 'Такой страницы нет', copy: 'Возможно, ссылка устарела или адрес был скопирован не полностью.', action: 'На главную Vecta' };
   const action = () => {
     if (kind === 'denied') void logoutOrganizer();
     else void navigate('/');
@@ -1556,139 +1556,6 @@ function PublicSystemPage({ kind }: { kind: 'login' | 'denied' | 'not-found' }) 
   return <><OnboardingPage /><PublicOverlayDialog eyebrow={content.eyebrow} title={content.title} copy={content.copy} icon={kind === 'denied' ? ShieldCheck : MagnifyingGlass} tone={kind === 'denied' ? 'orange' : 'blue'} primaryLabel={content.action} primaryStyle="secondary" onPrimary={action} onClose={() => navigate('/')} /></>;
 }
 
-type AdminOrganization = { id: string; name: string; members: number; status: 'Активна' | 'Приостановлена'; updated: string };
-type AdminMember = { membershipId: string; email: string; name: string; status: 'active' | 'disabled' };
-
-function SuperAdminLayout() {
-  return <div className="admin-workspace"><aside className="admin-sidebar"><NavLink to="/admin/organizations" className="workspace-logo-link" aria-label="К организациям Vecta"><VectaLogo /></NavLink><div className="admin-role"><ShieldCheck aria-hidden /><span><strong>Super Admin</strong><small>Управление платформой</small></span></div><nav><NavLink to="/admin/organizations" className={({ isActive }) => isActive ? 'active' : ''}><Buildings aria-hidden />Организации</NavLink></nav><button className="admin-exit" onClick={logoutOrganizer}><SignOut aria-hidden />Выйти</button></aside><div className="admin-main"><header><span>Административный контур</span><span className="avatar">SA</span></header><Outlet /><footer className="workspace-footer"><span>© 2026 Vecta</span><span>Действия администратора войдут в audit log</span></footer></div></div>;
-}
-
-function AdminOrganizationsPage() {
-  const navigate = useNavigate();
-  const [query, setQuery] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [organizations, setOrganizations] = useState<AdminOrganization[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  useEffect(() => {
-    let active = true;
-    getOrganizations()
-      .then((items) => {
-        if (!active) return;
-        setOrganizations(items.map((organization) => ({
-          id: organization.id,
-          name: organization.name,
-          members: organization.organizerCount,
-          status: organization.status === 'active' ? 'Активна' : 'Приостановлена',
-          updated: new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'long' }).format(organization.updatedAt),
-        })));
-        setLoadError(false);
-      })
-      .catch(() => active && setLoadError(true))
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
-  }, []);
-  const filtered = organizations.filter((organization) => organization.name.toLocaleLowerCase('ru').includes(query.toLocaleLowerCase('ru')));
-  const submitOrganization = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const title = name.trim();
-    if (!title) return;
-    try {
-      const created = await createOrganization({ name: title, slug: `org-${Date.now()}` });
-      setOrganizations((current) => [{ id: created.id, name: created.name, members: 0, status: 'Активна', updated: 'Только что' }, ...current]);
-      setName('');
-      setCreateOpen(false);
-    } catch {
-      setLoadError(true);
-    }
-  };
-  return <main className="admin-page"><PageHeader title="Организации" eyebrow="Создавайте рабочие пространства и управляйте доступом организаторов" action={<button className="button button-primary" onClick={() => setCreateOpen(true)}><Plus aria-hidden />Создать организацию</button>} /><section className="admin-table-card"><header><label className="compact-search"><MagnifyingGlass aria-hidden /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти организацию" aria-label="Найти организацию" /></label><span>{filtered.length} организаций</span></header>{loading ? <SystemPanel kind="loading" title="Загружаем организации" copy="Получаем актуальные рабочие пространства из D1." /> : loadError ? <SystemPanel kind="error" title="Не удалось загрузить организации" copy="Обновите страницу и попробуйте ещё раз." /> : filtered.length ? <div className="admin-org-list"><div className="admin-org-row admin-org-head"><span>Организация</span><span>Организаторы</span><span>Статус</span><span>Обновлено</span><span /></div>{filtered.map((organization) => <button className="admin-org-row" key={organization.id} onClick={() => navigate(`/admin/organizations/${organization.id}/members`)}><span><span className="soft-icon soft-icon-blue"><Buildings aria-hidden /></span><strong>{organization.name}</strong></span><span>{organization.members}</span><span><b className={organization.status === 'Активна' ? 'admin-status active' : 'admin-status paused'}>{organization.status}</b></span><span>{organization.updated}</span><CaretRight aria-hidden /></button>)}</div> : <SystemPanel kind="empty" title="Организации не найдены" copy="Измените поисковый запрос или создайте новое рабочее пространство." />}</section>{createOpen && <Modal title="Новая организация" onClose={() => setCreateOpen(false)}><form onSubmit={submitOrganization}><label className="field-label" htmlFor="organization-name">Название</label><input id="organization-name" className="text-input" value={name} onChange={(event) => setName(event.target.value)} autoFocus placeholder="Например, Северный филиал" /><p className="field-help">Организаторов можно добавить следующим шагом.</p><div className="modal-actions"><button className="button button-ghost" type="button" onClick={() => setCreateOpen(false)}>Отмена</button><button className="button button-primary" disabled={!name.trim()}>Создать</button></div></form></Modal>}</main>;
-}
-
-function AdminMembersPage() {
-  const { organizationId } = useParams();
-  const navigate = useNavigate();
-  const [organizationName, setOrganizationName] = useState('Организация');
-  const [members, setMembers] = useState<AdminMember[]>([]);
-  const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [memberActionId, setMemberActionId] = useState<string | null>(null);
-  const [pendingDisable, setPendingDisable] = useState<AdminMember | null>(null);
-  const [updatingMemberId, setUpdatingMemberId] = useState<string | null>(null);
-  const [memberActionError, setMemberActionError] = useState('');
-  useEffect(() => {
-    if (!organizationId) return;
-    let active = true;
-    Promise.all([getOrganizationWorkspace(organizationId), getOrganizationMembers(organizationId)])
-      .then(([workspace, items]) => {
-        if (!active) return;
-        setOrganizationName(workspace.organization.name);
-        setMembers(items.map((member) => ({ membershipId: member.membershipId, email: member.email ?? 'Email не указан', name: member.displayName, status: member.status })));
-      })
-      .catch(() => active && setMembers([]));
-    return () => { active = false; };
-  }, [organizationId]);
-  const addMember = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!organizationId || !displayName.trim() || !email.trim()) return;
-    setSubmitting(true);
-    setError('');
-    try {
-      const member = await addOrganizationMember(organizationId, { displayName: displayName.trim(), email: email.trim().toLowerCase() });
-      setMembers((current) => [...current, { membershipId: member.membershipId, email: member.email ?? email.trim().toLowerCase(), name: member.displayName, status: 'active' }]);
-      setDisplayName('');
-      setEmail('');
-    } catch (reason) {
-      setError(reason instanceof ApiRequestError ? reason.title ?? 'Не удалось добавить организатора' : 'Не удалось добавить организатора');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-  const changeMemberStatus = async (member: AdminMember, status: 'active' | 'disabled') => {
-    if (!organizationId) return;
-    setUpdatingMemberId(member.membershipId);
-    setMemberActionError('');
-    setMemberActionId(null);
-    try {
-      const updated = await updateOrganizationMemberStatus(organizationId, member.membershipId, status);
-      setMembers((current) => current.map((item) => item.membershipId === updated.membershipId ? { ...item, status: updated.status } : item));
-      setPendingDisable(null);
-    } catch (reason) {
-      setMemberActionError(reason instanceof ApiRequestError ? reason.title ?? 'Не удалось изменить доступ' : 'Не удалось изменить доступ');
-    } finally {
-      setUpdatingMemberId(null);
-    }
-  };
-  const requestMemberAction = (member: AdminMember) => {
-    setMemberActionId(null);
-    if (member.status === 'active') setPendingDisable(member);
-    else void changeMemberStatus(member, 'active');
-  };
-  return <main className="admin-page">
-    <button className="editor-back" onClick={() => navigate('/admin/organizations')}><ArrowLeft aria-hidden />К организациям</button>
-    <PageHeader title={organizationName} eyebrow="Организаторы и доступ к рабочему пространству" />
-    <div className="admin-members-layout">
-      <section className="admin-table-card">
-        <header><div><h2>Организаторы</h2><p>Роль даёт доступ к тестам и результатам только этой организации.</p></div><span>{members.length}</span></header>
-        {memberActionError && <p className="member-action-error" role="alert"><WarningCircle aria-hidden />{memberActionError}</p>}
-        <div className="member-list">{members.map((member) => <article key={member.membershipId}>
-          <span className="avatar">{member.name.slice(0,2).toUpperCase()}</span>
-          <span><strong>{member.name}</strong><small>{member.email}</small></span>
-          <b className={member.status === 'active' ? 'admin-status active' : 'admin-status paused'}>{member.status === 'active' ? 'Активен' : 'Отключён'}</b>
-          <div className="member-actions">
-            <button className="icon-button" disabled={updatingMemberId === member.membershipId} aria-label={`Действия: ${member.email}`} aria-haspopup="menu" aria-expanded={memberActionId === member.membershipId} onClick={() => setMemberActionId((current) => current === member.membershipId ? null : member.membershipId)}>{updatingMemberId === member.membershipId ? <span className="member-action-spinner" aria-hidden /> : <DotsThreeVertical aria-hidden />}</button>
-            {memberActionId === member.membershipId && <div className="member-action-menu" role="menu"><button role="menuitem" className={member.status === 'active' ? 'danger' : ''} onClick={() => requestMemberAction(member)}>{member.status === 'active' ? 'Отключить доступ' : 'Вернуть доступ'}</button></div>}
-          </div>
-        </article>)}</div>
-      </section>
-      <aside className="admin-invite-card"><span className="soft-icon soft-icon-blue"><EnvelopeSimple aria-hidden /></span><h2>Добавить организатора</h2><p>После добавления человек сможет запросить одноразовый код на эту почту. Отдельная регистрация не нужна.</p><form onSubmit={addMember} noValidate><label className="field-label" htmlFor="member-name">Имя</label><input id="member-name" className="text-input" value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="Анна Петрова" /><label className="field-label" htmlFor="member-email">Рабочая почта</label><input id="member-email" className="text-input" type="email" inputMode="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="anna@company.ru" />{error && <p className="field-error" role="alert">{error}</p>}<button className="button button-primary" disabled={submitting || !displayName.trim() || !email.trim()}>{submitting ? 'Добавляем…' : 'Добавить доступ'}</button></form></aside>
-    </div>
-    {pendingDisable && <Modal title="Отключить доступ?" onClose={() => !updatingMemberId && setPendingDisable(null)}><p className="modal-copy"><strong>{pendingDisable.name}</strong> больше не сможет открывать тесты и результаты этой организации. Созданные материалы и история действий сохранятся.</p><div className="modal-actions"><button className="button button-ghost" disabled={Boolean(updatingMemberId)} onClick={() => setPendingDisable(null)}>Отмена</button><button className="button button-danger" disabled={Boolean(updatingMemberId)} onClick={() => void changeMemberStatus(pendingDisable, 'disabled')}>{updatingMemberId ? 'Отключаем…' : 'Отключить доступ'}</button></div></Modal>}
-  </main>;
-}
 
 function ResultsPage() {
   const { tests, loadState, showMessage } = useWorkspace();
@@ -1932,9 +1799,7 @@ function AuthGate({ role, children }: { role: LocalIdentityRole; children: React
     getOrganizerSession(role)
       .then((session) => {
         if (!active) return;
-        const allowed = role === 'super_admin'
-          ? session.user.platformRole === 'super_admin'
-          : session.memberships.length > 0;
+        const allowed = session.memberships.length > 0;
         setState({ session, status: allowed ? 'ready' : 'forbidden' });
       })
       .catch((error: unknown) => {
@@ -1957,5 +1822,5 @@ function AuthGate({ role, children }: { role: LocalIdentityRole; children: React
 }
 
 export default function VectaApp() {
-  return <BrowserRouter><Routes><Route path="/" element={<OnboardingPage />} /><Route path="/login" element={<PublicSystemPage kind="login" />} /><Route path="/access-denied" element={<PublicSystemPage kind="denied" />} /><Route path="/join" element={<ParticipantJoinPage />} /><Route path="/attempt/:attemptId" element={<ParticipantAttemptLayout />}><Route path="instructions" element={<ParticipantInstructionsPage />} /><Route path="questions/:position" element={<ParticipantQuestionPage />} /><Route path="review" element={<ParticipantReviewPage />} /><Route path="complete" element={<ParticipantCompletePage />} /></Route><Route path="/app" element={<AuthGate role="organizer"><WorkspaceLayout /></AuthGate>}><Route index element={<OverviewPage />} /><Route path="tests" element={<TestBoardPage />} /><Route path="tests/:testId/edit" element={<QuestionEditorPage />} /><Route path="tests/:testId/preview" element={<AssessmentPreviewPage />} /><Route path="tests/:testId/publish" element={<PublicationChecklistPage />} /><Route path="publications/:publicationId/distribute" element={<DistributionPage />} /><Route path="results" element={<ResultsPage />} /></Route><Route path="/admin" element={<AuthGate role="super_admin"><SuperAdminLayout /></AuthGate>}><Route index element={<Navigate to="organizations" replace />} /><Route path="organizations" element={<AdminOrganizationsPage />} /><Route path="organizations/:organizationId/members" element={<AdminMembersPage />} /></Route><Route path="*" element={<PublicSystemPage kind="not-found" />} /></Routes></BrowserRouter>;
+  return <BrowserRouter><Routes><Route path="/" element={<OnboardingPage />} /><Route path="/login" element={<PublicSystemPage kind="login" />} /><Route path="/access-denied" element={<PublicSystemPage kind="denied" />} /><Route path="/join" element={<ParticipantJoinPage />} /><Route path="/attempt/:attemptId" element={<ParticipantAttemptLayout />}><Route path="instructions" element={<ParticipantInstructionsPage />} /><Route path="questions/:position" element={<ParticipantQuestionPage />} /><Route path="review" element={<ParticipantReviewPage />} /><Route path="complete" element={<ParticipantCompletePage />} /></Route><Route path="/app" element={<AuthGate role="organizer"><WorkspaceLayout /></AuthGate>}><Route index element={<OverviewPage />} /><Route path="tests" element={<TestBoardPage />} /><Route path="tests/:testId/edit" element={<QuestionEditorPage />} /><Route path="tests/:testId/preview" element={<AssessmentPreviewPage />} /><Route path="tests/:testId/publish" element={<PublicationChecklistPage />} /><Route path="publications/:publicationId/distribute" element={<DistributionPage />} /><Route path="results" element={<ResultsPage />} /></Route><Route path="/admin/*" element={<Navigate to="/app" replace />} /><Route path="*" element={<PublicSystemPage kind="not-found" />} /></Routes></BrowserRouter>;
 }

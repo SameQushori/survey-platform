@@ -12,17 +12,12 @@ await env.DB.batch([
   env.DB.prepare(
     `INSERT OR IGNORE INTO users
      (id, auth_subject, email, display_name, platform_role, status, created_at, updated_at)
-     VALUES ('user_super_admin', 'local:super-admin', 'admin@vecta.local', 'Администратор Vecta', 'super_admin', 'active', ?1, ?1)`,
-  ).bind(now),
-  env.DB.prepare(
-    `INSERT OR IGNORE INTO users
-     (id, auth_subject, email, display_name, platform_role, status, created_at, updated_at)
      VALUES ('user_organizer', 'local:organizer', 'organizer@vecta.local', 'Алексей Ковалёв', NULL, 'active', ?1, ?1)`,
   ).bind(now),
   env.DB.prepare(
     `INSERT OR IGNORE INTO users
      (id, auth_subject, email, display_name, platform_role, status, created_at, updated_at)
-     VALUES ('user_staging_owner', 'app:user_staging_owner', NULL, 'Владелец Vecta', 'super_admin', 'active', ?1, ?1)`,
+     VALUES ('user_staging_owner', 'app:user_staging_owner', NULL, 'Владелец Vecta', NULL, 'active', ?1, ?1)`,
   ).bind(now),
   env.DB.prepare(
     `INSERT OR IGNORE INTO memberships

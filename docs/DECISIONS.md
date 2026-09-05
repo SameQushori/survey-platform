@@ -1,5 +1,14 @@
 # Vecta — Decision Log
 
+## 2026-09-05 — Открытая регистрация организаторов
+
+- Decision: любой пользователь с доступом к указанному email может подтвердить шестизначный OTP и получить собственное личное пространство с membership `organizer`.
+- Authorization: общей Super Admin-роли, административного UI и platform-wide API больше нет; доступ определяется только активным membership конкретной организации.
+- Provisioning: пользователь, организация и membership создаются сервером при первом успешном подтверждении email. Неподтверждённый пользователь удаляется, если email-провайдер не принял письмо.
+- Abuse protection: Turnstile остаётся включённым, потому что его Free plan покрывает текущий продукт; дополнительно действуют раздельные IP/email rate limits.
+- Delivery constraint: для писем на произвольные адреса нужен verified sending domain; sandbox sender Resend не является production-конфигурацией открытой регистрации.
+- Supersedes: прежние решения об allow-list и Super Admin administration.
+
 ## 2026-09-05 — Production provisioning и честный deploy gate
 
 - Decision: production D1, migrations, owner bootstrap и Worker environments создаются отдельно от staging; staging data не переиспользуются.

@@ -13,7 +13,8 @@
 - Бренд: **Vecta**.
 - Assessment-first платформа корпоративного тестирования, основной язык MVP — русский.
 - Backend/hosting: Cloudflare Workers + Static Assets, D1, Turnstile и Rate Limiting.
-- Organizer identity: allow-listed email → шестизначный OTP → 12-часовая revocable HttpOnly session.
+- Organizer identity: открытая регистрация по email → шестизначный OTP → личное пространство → 12-часовая revocable HttpOnly session.
+- Общей Super Admin-роли и платформенной панели администрирования нет; каждый подтверждённый пользователь — организатор только своего пространства.
 - Participant modes: общий код/ссылка и контролируемое одноразовое приглашение.
 - Результат участника скрыт по умолчанию; при включении показываются только score/maxScore.
 - Типы вопросов MVP: один вариант, несколько вариантов, шкала.
@@ -22,9 +23,9 @@
 ## Выполнено в коде
 
 - Полностью удалены legacy JSX/Firebase runtime, setup и зависимости.
-- Реализованы responsive onboarding, organizer workspace, Kanban, authoring, publishing, participant lifecycle, results, analytics, CSV и administration.
+- Реализованы responsive onboarding, self-service регистрация, organizer workspace, Kanban, authoring, publishing, participant lifecycle, results, analytics и CSV.
 - Доска поддерживает forward/reopen/revise без изменения immutable исторических публикаций и результатов.
-- Реализованы email OTP, anti-enumeration, HMAC-only challenges/sessions, Turnstile, rate limits, CSRF/same-origin boundary и tenant-safe authorization.
+- Реализованы email OTP, автоматическое provision личного пространства, HMAC-only challenges/sessions, бесплатный Turnstile, IP/email rate limits, CSRF/same-origin boundary и tenant-safe authorization.
 - Исправлены autosave race, публикация, participant exit, auth handoff, modal states, шестиячеечный OTP и обратные lifecycle-переходы.
 - Удалён production URL-переключатель mock loading/empty/error states.
 - Dependency stack обновлён в пределах текущих major; полный audit — 0 vulnerabilities.
@@ -37,25 +38,25 @@
 - `npm run typecheck`;
 - `npm run lint`;
 - 32 unit tests в 8 файлах;
-- 36 Worker/D1 integration tests в 6 файлах;
+- 34 Worker/D1 integration tests в 6 файлах;
 - `npm run build`;
-- `npm audit --audit-level=moderate` — 0 vulnerabilities;
+- `npm audit --audit-level=moderate --offline` — 0 vulnerabilities; online registry endpoint 2026-09-05 дважды вернул `ECONNRESET`;
 - post-build scan — `.env*`/`.dev.vars*` отсутствуют в `dist`.
 
 ## Cloudflare inventory
 
 ### Staging
 
-- D1: `vecta-staging`, ID `fcbe1d68-f3ec-4d9b-966e-202a288fe8fc`, 5 migrations / 18 tables.
-- Public: <https://vecta-staging-public.alimbekov1234567890.workers.dev>, version `b2fe70e8-ace3-423c-9081-7122d20be2a1`.
-- Organizer: <https://vecta-staging-organizer.alimbekov1234567890.workers.dev>, version `edf2a88c-8fd3-404b-8850-73ae3d23f99a`.
+- D1: `vecta-staging`, ID `fcbe1d68-f3ec-4d9b-966e-202a288fe8fc`, 6 migrations / 18 tables; legacy privileged users: `0`, foreign keys clean.
+- Public: <https://vecta-staging-public.alimbekov1234567890.workers.dev>, version `fcf05337-9b5c-4410-8d2b-fde5b4261680`.
+- Organizer: <https://vecta-staging-organizer.alimbekov1234567890.workers.dev>, version `702e7110-7566-4fe2-85fa-1b614b8a6ed2`.
 - Единственный owner email исправлен на подтверждённый пользователем адрес; PII не хранится в Git.
 
 ### Production — подготовлено, но Worker deploy намеренно не выполнен
 
 - D1: `vecta-production`, ID `44ad08b1-d7e0-49d7-ad25-9594f50a1227`, регион WEUR.
-- Применены все 5 migrations, создано 18 application tables, `PRAGMA foreign_key_check` чистый.
-- Создан единственный production Super Admin/Organizer с подтверждённым email вне Git.
+- Применены все 6 migrations, создано 18 application tables, legacy privileged users: `0`, `PRAGMA foreign_key_check` чистый.
+- Существующий production owner сохранён как обычный Organizer; migration `0006` обнуляет legacy platform role.
 - `wrangler.jsonc` содержит отдельные `production-public` / `production-organizer`, Worker names `vecta-public` / `vecta-organizer`, отдельные rate-limit namespaces и D1 binding.
 - Production Workers не публикуются до настройки их secrets и успешного OTP UAT: deploy без Turnstile/Resend создал бы заведомо неработающий или небезопасный вход.
 
@@ -64,7 +65,7 @@
 1. Owner проходит staging вход: Turnstile → письмо → OTP → `/app` → logout → повторный вход.
 2. После успеха удалить устаревший staging secret `ORGANIZER_ACCESS_CODE`.
 3. Добавить production hostnames в Turnstile и интерактивно задать production secrets: `TURNSTILE_SECRET`, `ATTEMPT_TOKEN_SECRET`, `AUTH_TOKEN_SECRET`, `RESEND_API_KEY`.
-4. Resend `onboarding@resend.dev` может отправлять только на email владельца Resend. Для публичной рассылки нужен собственный verified sending domain; домена сейчас нет.
+4. Для фактически открытой регистрации нужен verified sending domain: Resend `onboarding@resend.dev` отправляет только на email владельца Resend. Домена сейчас нет.
 5. Снять LCP/CLS/INP через Chrome DevTools MCP или вручную в DevTools. В текущей среде DevTools MCP не подключён, поэтому метрики не вымышлялись.
 
 ## Точный следующий маршрут

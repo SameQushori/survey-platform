@@ -1,17 +1,25 @@
 # Organizer Email OTP Runbook
 
 Обновлено: 2026-09-05
-Статус: email OTP развёрнут в Organizer staging; staging и production owner records настроены, ожидается ручной UAT получения кода и production secrets.
+Статус: открытая регистрация реализована; staging ждёт ручного UAT с произвольным адресом после настройки verified sending domain.
 
 ## Архитектура
 
-- Organizer Worker обслуживает `/login`, `/app`, `/admin` и organizer API.
-- Пользователь вводит заранее добавленный рабочий email, проходит Turnstile и получает одноразовый шестизначный код.
+- Organizer Worker обслуживает `/login`, `/app` и organizer API; `/admin/*` перенаправляется в `/app`.
+- Любой пользователь вводит email, проходит Turnstile и получает одноразовый шестизначный код.
+- При первом успешном подтверждении Worker атомарно создаёт личную организацию, membership `organizer`, audit event и 12-часовую session.
 - Код действует 10 минут, допускает не более 5 неудачных проверок и после успешного входа становится недействительным.
 - D1 хранит только HMAC digest кода и session token; plaintext-коды и токены не сохраняются.
 - Браузер получает `__Host-vecta_session` с `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/` и сроком 12 часов.
-- Публичной регистрации нет. Email даёт доступ только если Super Admin заранее создал активного пользователя и membership.
-- Ответ запроса кода одинаков для известного и неизвестного email. Отправка выполняется после ответа через `waitUntil`, чтобы не раскрывать наличие учётной записи по содержимому или задержке почтового провайдера.
+- Если провайдер не принял письмо для нового адреса, challenge и неподтверждённый provisional user удаляются.
+- Общей Super Admin-роли и allow-list нет. Доступ к данным определяется только активным membership конкретной организации.
+
+## Защита от злоупотреблений
+
+- Cloudflare Turnstile Free остаётся включённым на запросе OTP.
+- Отдельные rate-limit keys ограничивают запросы по IP и нормализованному email; проверка OTP также ограничена по IP.
+- Disabled user не реактивируется сам через открытую регистрацию.
+- Логи доставки содержат request/challenge identifiers и provider status, но не email, OTP, raw token или provider body.
 
 ## Конфигурация
 
@@ -25,7 +33,7 @@ AUTH_EMAIL_FROM=Vecta <login@verified-domain.example>
 TURNSTILE_HOSTNAMES=<exact organizer hostname>
 ```
 
-Secrets, вводимые только интерактивно через Wrangler:
+Secrets вводятся только интерактивно через Wrangler:
 
 ```text
 TURNSTILE_SECRET
@@ -34,57 +42,39 @@ AUTH_TOKEN_SECRET
 RESEND_API_KEY
 ```
 
-`AUTH_TOKEN_SECRET` должен быть случайным и не короче 32 байт. Его ротация немедленно завершает все активные organizer sessions и делает незавершённые OTP недействительными.
+`AUTH_TOKEN_SECRET` должен быть случайным и не короче 32 байт. Его ротация завершает активные organizer sessions и инвалидирует незавершённые OTP.
 
-Для staging допустим `Vecta <onboarding@resend.dev>`, но он отправляет письма только на email владельца Resend-аккаунта. Для production обязателен подтверждённый собственный домен и sender на этом домене.
+Для staging sender `Vecta <onboarding@resend.dev>` отправляет письма только на email владельца Resend-аккаунта. Открытая регистрация на произвольные адреса требует собственного verified domain и sender на нём.
 
-Secrets запрещено помещать в `wrangler.jsonc`, `.env`, Git, shell history, документацию или логи. Использовать интерактивную команду:
+Secrets запрещено помещать в `wrangler.jsonc`, `.env`, Git, shell history, документацию или логи. Пример интерактивной команды:
 
 ```powershell
-npx.cmd wrangler secret put RESEND_API_KEY --config wrangler.jsonc --env staging-organizer
+npm.cmd exec wrangler -- secret put RESEND_API_KEY --config wrangler.jsonc --env staging-organizer
 ```
 
-Cloudflare Vite Plugin выбирает environment во время сборки, а не во время `wrangler deploy`. Поэтому каждый Organizer environment всегда собирать и проверять двумя отдельными командами:
+Cloudflare Vite Plugin выбирает environment во время сборки. Сборка и deploy Organizer staging:
 
 ```powershell
 npm.cmd run build:staging:organizer
 npm.cmd exec wrangler -- deploy --dry-run
+npm.cmd exec wrangler -- deploy
 ```
-
-Для production использовать `npm.cmd run build:production:organizer`; deploy-команда так же запускается без `--env`.
-
-После успешного dry-run второй вызов меняется на `npm.cmd exec wrangler -- deploy`. Не добавлять `--env` на стадии deploy: output-конфиг уже должен быть flattened для выбранного environment.
-
-## Bootstrap первого владельца
-
-До первого входа в D1 должен существовать активный Super Admin с подтверждённым email:
-
-```sql
-UPDATE users
-SET email = '<normalized-owner-email>',
-    auth_subject = 'pending:<normalized-owner-email>',
-    updated_at = unixepoch() * 1000
-WHERE id IN ('user_staging_owner', 'user_production_owner');
-```
-
-Не сохранять реальный email в seed-файле репозитория. Выполнять параметризованный или вручную проверенный SQL только после подтверждения адреса владельцем.
 
 ## Staging UAT
 
-1. Открыть Organizer `/login` и ввести заранее добавленный email.
-2. Пройти Turnstile; интерфейс должен всегда перейти на шаг ввода кода, в том числе для неизвестного адреса.
-3. Проверить письмо Vecta, ввести код и попасть в `/app` или `/admin` согласно роли.
+1. Открыть Organizer `/login`, ввести новый email и пройти Turnstile.
+2. Проверить входящие и «Спам», ввести код из письма и попасть в `/app`.
+3. Убедиться, что доска пуста и создано одно личное пространство; обновление страницы сохраняет session.
 4. Повторно использовать тот же код — получить отказ.
 5. Запросить новый код — предыдущий должен перестать работать.
 6. Пять раз ввести неверный код — challenge должен стать недействительным.
-7. Выйти через меню профиля, обновить защищённую страницу — должен открыться `/login`.
-8. Добавить организатора в Super Admin, затем войти его email и проверить границу организации.
-9. Для неизвестного email убедиться, что UI не сообщает, существует ли аккаунт.
+7. Выйти через меню профиля, обновить `/app` — должен открыться экран входа.
+8. Зарегистрировать второй email и убедиться, что он не видит тесты первого пользователя.
+9. Проверить, что delivery error не оставляет provisional user и не пишет email в Worker logs.
 
 ## Отзыв доступа и аварийные действия
 
-- Обычный отзыв: перевести membership или user в `disabled`, затем выставить `revoked_at` активным sessions этого пользователя.
-- Компрометация session secret: ротировать `AUTH_TOKEN_SECRET`; это завершит все organizer sessions.
-- Компрометация Resend key: отозвать ключ у провайдера, создать новый и обновить Worker secret.
-- Ошибка доставки: challenge удаляется, наружу остаётся generic response, а structured log содержит event `organizer_login_email_failed` без email, кода и токена.
-- Rollback: вернуть предыдущую Worker version. После успешного OTP UAT удалить старый `ORGANIZER_ACCESS_CODE` secret; в production его не создавать.
+- Для блокировки вручную перевести user в `disabled` и выставить `revoked_at` активным sessions; self-service вход не должен реактивировать его.
+- При компрометации session secret ротировать `AUTH_TOKEN_SECRET`.
+- При компрометации Resend key отозвать ключ у провайдера, создать новый и обновить Worker secret.
+- Rollback: вернуть предыдущую Worker version. D1 migrations остаются forward-only.

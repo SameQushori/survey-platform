@@ -45,7 +45,7 @@
 
 ### 4.1 Роли
 
-- Super Admin: управление организациями и организаторами.
+- Organizer: самостоятельная регистрация по подтверждённому email и работа только в личном workspace.
 - Organizer: создание, публикация и анализ тестов.
 - Participant: вход по коду или ссылке без постоянной учётной записи.
 
@@ -85,7 +85,7 @@
 
 - Публичная главная Vecta.
 - Вход и состояние отсутствия доступа.
-- Панель Super Admin.
+- Платформенная панель Super Admin (исключена решением от 2026-09-05).
 - Панель Organizer.
 - Список тестов и состояния empty/loading/error.
 - Создание и редактирование draft.
@@ -122,7 +122,7 @@
 - R2 binding добавляется только при реализации файлового экспорта.
 - Turnstile проверяется Worker до создания публичной попытки.
 - Rate Limiting применяется к organizer login, проверке participant-кодов и отправке попытки.
-- Organizer identity — заранее добавленный email + одноразовый код; Worker хранит только HMAC digest OTP/session и проверяет D1 membership.
+- Organizer identity — открытая регистрация по email + одноразовый код; Worker создаёт личный workspace после подтверждения, хранит только HMAC digest OTP/session и проверяет D1 membership.
 - Workers Logs используются без записи ответов, токенов и персональных данных.
 
 ### 5.3 Предварительные таблицы D1
@@ -258,7 +258,7 @@
 - Интегрировать подтверждённый auth-вариант организаторов.
 - Реализовать server-side role checks.
 - Реализовать organization membership.
-- Реализовать Super Admin и Organizer navigation/shell.
+- Реализовать Organizer navigation/shell; platform-wide administration удалено решением от 2026-09-05.
 - Добавить audit log административных действий.
 
 ### Acceptance criteria

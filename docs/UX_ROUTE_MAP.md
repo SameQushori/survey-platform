@@ -6,7 +6,7 @@
 ## Принципы маршрутизации
 
 - MVP работает на русском языке.
-- Organizer и Super Admin используют встроенный email One-time Code и server-side HttpOnly session; роли и memberships определяет Worker по D1.
+- Organizer самостоятельно регистрируется по email One-time Code; memberships определяет Worker по D1, платформенной Super Admin-роли нет.
 - Participant не создаёт постоянный аккаунт.
 - Контролируемая ссылка передаёт одноразовый токен во fragment (`#token=...`), чтобы секрет не попадал в обычные server/access logs. Клиент немедленно обменивает его на attempt session и очищает fragment.
 - Опубликованная версия теста неизменяема; открытая попытка всегда привязана к конкретной версии.
@@ -18,7 +18,7 @@
 |---|---|---|---|
 | `/` | Onboarding и вход Vecta | Понять продукт и сразу выбрать Organizer managed auth либо ввести participant code | default, code validating, invalid/expired/closed code, auth unavailable |
 | `/login` | Модальный вход поверх onboarding | Пройти managed auth после выбора Organizer на главной; закрытие возвращает на `/` | redirecting, invalid/expired, no access |
-| `/access-denied` | Модальное сообщение поверх onboarding | Объяснить отсутствие роли, позволить закрыть окно или безопасно сменить аккаунт | default |
+| `/access-denied` | Модальное сообщение поверх onboarding | Объяснить недоступность workspace, позволить закрыть окно или повторить вход | default |
 | `/join` | Вход участника | Ввести общий код и отображаемое имя | default, validating, invalid, expired, closed, rate-limited, network error |
 | `/join#token=…` | Обмен приглашения | Активировать контролируемую одноразовую ссылку | exchanging, invalid, used, expired, closed, network error |
 | `/attempt/:attemptId/instructions` | Инструкция | Увидеть правила и осознанно начать | ready, starting, already started, closed before start |
@@ -43,16 +43,9 @@
 | `/app/publications/:publicationId/attempts` | Попытки | Найти конкретного участника и статус | populated, empty, filtered empty, loading, error |
 | `/app/publications/:publicationId/attempts/:attemptId` | Детали попытки | Проверить ответы и начисление баллов | complete, in progress, invalidated, loading, error |
 
-## Контур Super Admin
-
-| Route | Экран | Основная задача | Ключевые состояния |
-|---|---|---|---|
-| `/admin/organizations` | Организации | Создавать, искать и менять статус организаций | populated, empty, loading, error |
-| `/admin/organizations/:organizationId/members` | Организаторы | Управлять доступом организаторов | populated, empty, invite pending, loading, error |
-
 ## Навигационные правила
 
-- После входа Organizer попадает в `/app`; Super Admin — в `/admin/organizations`.
+- После регистрации или входа Organizer всегда попадает в `/app`; legacy `/admin/*` безопасно перенаправляется туда же.
 - В Organizer-контуре постоянная навигация содержит только: «Обзор», «Тесты», «Результаты». Настройки аккаунта находятся в меню профиля, без отдельного MVP-раздела.
 - Редактор использует локальную навигацию: «Содержание», «Настройки», «Preview», затем явное действие «Опубликовать».
 - Participant-контур не показывает глобальную навигацию и не предлагает уйти со страницы во время попытки.

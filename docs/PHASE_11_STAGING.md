@@ -7,14 +7,14 @@
 
 | Ресурс | Значение | Состояние |
 | --- | --- | --- |
-| D1 | `vecta-staging` / EEUR | remote: 5 migrations / 18 application tables; pending migrations отсутствуют |
-| Public Worker | `vecta-staging-public` | deployed, version `b2fe70e8-ace3-423c-9081-7122d20be2a1`, preview URLs disabled |
-| Organizer Worker | `vecta-staging-organizer` | email OTP + reversible assessment workflow deployed, version `edf2a88c-8fd3-404b-8850-73ae3d23f99a`; предыдущая access-code версия сохранена для rollback до UAT |
+| D1 | `vecta-staging` / EEUR | remote: 6 migrations / 18 application tables; privileged users `0`, foreign keys clean |
+| Public Worker | `vecta-staging-public` | deployed, version `fcf05337-9b5c-4410-8d2b-fde5b4261680`, preview URLs disabled |
+| Organizer Worker | `vecta-staging-organizer` | открытая email-регистрация + reversible assessment workflow, version `702e7110-7566-4fe2-85fa-1b614b8a6ed2` |
 | Turnstile | managed widget `vecta-staging` | public и organizer hostnames разрешены; secret ротирован 2026-09-01 |
 | Participant rate limit | namespace `2001`, 20 requests / 60 seconds | привязан к обоим staging Workers |
 | Organizer auth rate limit | namespace `2002`, 5 requests / 60 seconds | привязан к Organizer Worker |
 | Existing secrets | public: `TURNSTILE_SECRET`, `ATTEMPT_TOKEN_SECRET`; organizer: те же + `AUTH_TOKEN_SECRET`, `RESEND_API_KEY`, старый `ORGANIZER_ACCESS_CODE` | старый access-code secret удалить только после успешного email OTP UAT |
-| Owner identity | `user_staging_owner` / `org_vecta` | Super Admin + Organizer; подтверждённый email привязан только в remote D1, без PII в Git |
+| Owner identity | `user_staging_owner` / `org_vecta` | Обычный Organizer; подтверждённый email привязан только в remote D1, без PII в Git |
 
 Public staging: <https://vecta-staging-public.alimbekov1234567890.workers.dev>
 
@@ -24,10 +24,10 @@ Organizer staging: <https://vecta-staging-organizer.alimbekov1234567890.workers.
 
 | Ресурс | Значение | Состояние |
 | --- | --- | --- |
-| D1 | `vecta-production` / `44ad08b1-d7e0-49d7-ad25-9594f50a1227` / WEUR | 5 migrations / 18 tables; `foreign_key_check` чистый |
+| D1 | `vecta-production` / `44ad08b1-d7e0-49d7-ad25-9594f50a1227` / WEUR | 6 migrations / 18 tables; privileged users `0`, `foreign_key_check` чистый |
 | Public Worker config | `vecta-public` | отдельный D1 и rate-limit namespace `3001`; ещё не deployed |
 | Organizer Worker config | `vecta-organizer` | session auth, Resend и namespaces `3001`/`3002`; ещё не deployed |
-| Owner identity | `user_production_owner` / `org_vecta` | Super Admin + Organizer; email привязан только в remote D1 |
+| Owner identity | `user_production_owner` / `org_vecta` | Обычный Organizer; email привязан только в remote D1 |
 
 Production Worker deploy намеренно не выполняется до интерактивной установки secrets и успешного OTP UAT. Полный маршрут: `docs/DEPLOYMENT.md`.
 
@@ -49,19 +49,19 @@ Production Worker deploy намеренно не выполняется до и�
 ## Проверено локально
 
 - TypeScript typecheck проходит.
-- 25 unit tests и 33 Worker/D1 tests проходят.
+- 32 unit tests и 34 Worker/D1 tests проходят.
 - Migration `0005_organizer_email_auth.sql` применяется в isolated D1 test runtime.
-- Worker tests подтверждают email request → Resend adapter → одноразовый OTP → HttpOnly cookie → authenticated session → logout/revocation, max attempts и anti-enumeration.
+- Worker tests подтверждают email request → Resend adapter → одноразовый OTP → provision личного workspace → HttpOnly cookie → authenticated session → logout/revocation, max attempts и безопасную очистку при delivery failure.
 - Plaintext OTP не записывается в D1, raw session token заменён HMAC digest; проверка выполняется Web Crypto.
 - Cookie-auth mutations отклоняют cross-site request context.
-- `build:staging:organizer` формирует `vecta-staging-organizer` с staging D1, session auth, Resend vars и обоими rate-limit bindings; `wrangler deploy --dry-run` проходит, upload не выполнялся.
+- `build:staging:organizer` формирует `vecta-staging-organizer` с staging D1, session auth, Resend vars и обоими rate-limit bindings; актуальная сборка deployed.
 - OTP интерфейс состоит из шести доступных ячеек, принимает вставку полного кода и поддерживает клавиатурную навигацию; подсказка про папку «Спам» показана только после запроса письма.
 - После UI deploy remote smoke подтверждает health/login `200` и наличие новой OTP-разметки/CSS в опубликованных assets.
-- Super Admin member actions используют реальный PATCH endpoint: disable подтверждается в modal, restore выполняется из того же меню; 34 Worker/D1 tests проверяют status и audit event.
+- Платформенные Super Admin endpoints и UI удалены; открытая регистрация создаёт отдельный workspace и organizer membership после первого подтверждённого OTP.
 - Remote D1 session audit 2026-09-04: активная owner email-session отсутствует, поэтому старый access-code secret пока не удалён.
 - Встроенная панель помощи содержит поиск и три раскрываемые инструкции; фиктивный support email и мёртвые `#privacy`/`#terms`/`#docs` удалены до появления подтверждённых каналов и документов.
 - Финальный gate блока: typecheck/lint, 29 unit и 34 Worker/D1 tests; обе среды прошли remote health/shell/asset smoke после раздельных environment-specific сборок.
-- Auth handoff regression исправлен 2026-09-05: обе staging-сборки получают явный `VITE_ORGANIZER_ORIGIN`; public CTA и прямой `/login` переходят на Organizer hostname. Public Worker version `b2fe70e8-ace3-423c-9081-7122d20be2a1`; browser QA, remote shell/asset/auth-route smoke, 32 unit и 36 Worker/D1 tests проходят.
+- Auth handoff regression исправлен 2026-09-05: обе staging-сборки получают явный `VITE_ORGANIZER_ORIGIN`; public CTA и прямой `/login` переходят на Organizer hostname. Открытая регистрация deployed в Public version `fcf05337-9b5c-4410-8d2b-fde5b4261680` и Organizer version `702e7110-7566-4fe2-85fa-1b614b8a6ed2`; remote health smoke, 32 unit и 34 Worker/D1 tests проходят.
 - Assessment board поддерживает обратные переходы с серверной state machine: reopen последней публикации и создание новой draft-version из immutable snapshot. История публикаций доступна в «Результатах»; старые attempts/results не перепривязываются.
 - Reversible workflow gate: typecheck/lint, 29 unit и 36 Worker/D1 tests, local desktop menu/modal QA без console errors и remote smoke. Незалогиненный вызов `/reopen` возвращает `401`.
 
@@ -79,4 +79,4 @@ Production Worker deploy намеренно не выполняется до и�
 - Public: `562946a9-dc5e-4686-80a7-d6f27bf5fca1`.
 - Organizer: `3912ce4a-48a0-4996-bb52-8b2628c6b8f5`.
 
-Migration `0005` только добавляет две таблицы и индексы; она совместима с предыдущим Worker. Перед потенциально destructive production migration обязателен `wrangler d1 export` вне Git.
+Migrations `0005`–`0006` совместимы с существующей schema: `0005` добавляет auth tables/indexes, `0006` только обнуляет неиспользуемую platform role. Перед потенциально destructive production migration обязателен `wrangler d1 export` вне Git.

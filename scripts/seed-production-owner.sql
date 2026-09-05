@@ -17,7 +17,7 @@ VALUES (
   'app:user_production_owner',
   NULL,
   'Владелец Vecta',
-  'super_admin',
+  NULL,
   'active',
   unixepoch('now') * 1000,
   unixepoch('now') * 1000

@@ -1,4 +1,4 @@
-import { exports } from "cloudflare:workers";
+import { env, exports } from "cloudflare:workers";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { network } from "./network";
@@ -6,11 +6,6 @@ import { network } from "./network";
 const organizerHeaders = {
   "x-vecta-local-email": "organizer@vecta.local",
   "x-vecta-local-subject": "local:organizer",
-};
-
-const superAdminHeaders = {
-  "x-vecta-local-email": "admin@vecta.local",
-  "x-vecta-local-subject": "local:super-admin",
 };
 
 function apiRequest(path: string, init: RequestInit = {}): Request {
@@ -214,14 +209,23 @@ describe("organizer results and exports", () => {
   });
 
   it("does not expose another organization's results or export", async () => {
-    const createdOrganization = await exports.default.fetch(authorizedRequest("/api/v1/organizations", superAdminHeaders, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: "Изолированная организация", slug: `isolated-${crypto.randomUUID()}` }),
-    }));
-    expect(createdOrganization.status).toBe(201);
-    const organization = await createdOrganization.json<{ id: string }>();
-    const fixture = await publishFixture(organization.id, superAdminHeaders);
+    const suffix = crypto.randomUUID();
+    const organizationId = `org_${suffix}`;
+    const membershipId = `membership_${suffix}`;
+    const now = Date.now();
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO organizations (id, name, slug, status, created_at, updated_at)
+         VALUES (?1, 'Изолированная организация', ?2, 'active', ?3, ?3)`,
+      ).bind(organizationId, `isolated-${suffix}`, now),
+      env.DB.prepare(
+        `INSERT INTO memberships (id, organization_id, user_id, role, status, created_at, updated_at)
+         VALUES (?1, ?2, 'user_organizer', 'organizer', 'active', ?3, ?3)`,
+      ).bind(membershipId, organizationId, now),
+    ]);
+    const fixture = await publishFixture(organizationId);
+    await env.DB.prepare("UPDATE memberships SET status = 'disabled', updated_at = ?1 WHERE id = ?2")
+      .bind(Date.now(), membershipId).run();
 
     const overview = await exports.default.fetch(authorizedRequest(`/api/v1/publications/${fixture.publicationId}/results/overview`));
     const exportResponse = await exports.default.fetch(authorizedRequest(`/api/v1/publications/${fixture.publicationId}/export.csv`));

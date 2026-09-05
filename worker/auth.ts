@@ -20,7 +20,6 @@ interface SessionUserRow {
 
 const localSubjects = new Map([
   ["local:organizer", "organizer@vecta.local"],
-  ["local:super-admin", "admin@vecta.local"],
 ]);
 
 export const organizerSessionCookie = "__Host-vecta_session";

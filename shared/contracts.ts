@@ -43,7 +43,6 @@ export interface OrganizerSessionDTO {
     id: EntityId;
     displayName: string;
     email: string | null;
-    platformRole: "super_admin" | null;
   };
   memberships: Array<{
     organizationId: EntityId;
@@ -62,37 +61,13 @@ export interface OrganizerLoginVerificationDTO {
   expiresAt: UnixMillis;
 }
 
-export interface OrganizationSummaryDTO {
-  id: EntityId;
-  name: string;
-  slug: string;
-  status: "active" | "disabled";
-  organizerCount: number;
-  updatedAt: UnixMillis;
-}
-
-export interface OrganizationMemberDTO {
-  membershipId: EntityId;
-  userId: EntityId;
-  displayName: string;
-  email: string | null;
-  role: "organizer";
-  status: "active" | "disabled";
-}
-
-export interface OrganizationMemberStatusDTO {
-  membershipId: EntityId;
-  status: "active" | "disabled";
-  updatedAt: UnixMillis;
-}
-
 export interface OrganizationWorkspaceDTO {
   organization: {
     id: EntityId;
     name: string;
     slug: string;
   };
-  role: "organizer" | "super_admin";
+  role: "organizer";
 }
 
 export interface PublicQuestionOptionDTO {

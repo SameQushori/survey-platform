@@ -10,10 +10,6 @@ import type {
   CreateAssessmentRequest,
   DistributionDTO,
   InvitationDTO,
-  OrganizationMemberDTO,
-  OrganizationMemberStatusDTO,
-  OrganizationSummaryDTO,
-  OrganizationWorkspaceDTO,
   OrganizerSessionDTO,
   OrganizerLoginChallengeDTO,
   OrganizerLoginVerificationDTO,
@@ -31,16 +27,12 @@ import type {
 } from '../../shared/contracts';
 import { organizerLoginUrl } from './organizerLogin';
 
-export type LocalIdentityRole = 'organizer' | 'super_admin';
+export type LocalIdentityRole = 'organizer';
 
 const localIdentities = {
   organizer: {
     email: 'organizer@vecta.local',
     subject: 'local:organizer',
-  },
-  super_admin: {
-    email: 'admin@vecta.local',
-    subject: 'local:super-admin',
   },
 } as const;
 
@@ -113,49 +105,6 @@ export function verifyOrganizerLoginCode(challengeId: string, code: string): Pro
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ challengeId, code }),
-  });
-}
-
-export function getOrganizations(): Promise<OrganizationSummaryDTO[]> {
-  return authorizedRequest('/api/v1/organizations', 'super_admin');
-}
-
-export function createOrganization(input: { name: string; slug: string }): Promise<OrganizationSummaryDTO> {
-  return authorizedRequest('/api/v1/organizations', 'super_admin', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
-}
-
-export function getOrganizationWorkspace(organizationId: string): Promise<OrganizationWorkspaceDTO> {
-  return authorizedRequest(`/api/v1/organizations/${encodeURIComponent(organizationId)}/workspace`, 'super_admin');
-}
-
-export function getOrganizationMembers(organizationId: string): Promise<OrganizationMemberDTO[]> {
-  return authorizedRequest(`/api/v1/organizations/${encodeURIComponent(organizationId)}/members`, 'super_admin');
-}
-
-export function addOrganizationMember(
-  organizationId: string,
-  input: { displayName: string; email: string },
-): Promise<OrganizationMemberDTO> {
-  return authorizedRequest(`/api/v1/organizations/${encodeURIComponent(organizationId)}/members`, 'super_admin', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  });
-}
-
-export function updateOrganizationMemberStatus(
-  organizationId: string,
-  membershipId: string,
-  status: 'active' | 'disabled',
-): Promise<OrganizationMemberStatusDTO> {
-  return authorizedRequest(`/api/v1/organizations/${encodeURIComponent(organizationId)}/members/${encodeURIComponent(membershipId)}`, 'super_admin', {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status }),
   });
 }
 

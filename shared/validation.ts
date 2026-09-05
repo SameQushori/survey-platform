@@ -235,38 +235,3 @@ export const createInvitationBatchSchema = z.strictObject({
     }),
   expiresAt: z.number().int().positive().nullable(),
 });
-
-const organizationStatusSchema = z.enum(["active", "disabled"]);
-const normalizedEmailSchema = z
-  .email()
-  .max(320)
-  .transform((value) => value.trim().toLowerCase());
-
-export const createOrganizationSchema = z.strictObject({
-  name: z.string().trim().min(1).max(200),
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .min(2)
-    .max(80)
-    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-});
-
-export const updateOrganizationSchema = z
-  .strictObject({
-    name: z.string().trim().min(1).max(200).optional(),
-    status: organizationStatusSchema.optional(),
-  })
-  .refine((value) => Object.keys(value).length > 0, {
-    message: "Provide at least one organization field",
-  });
-
-export const addOrganizationMemberSchema = z.strictObject({
-  email: normalizedEmailSchema,
-  displayName: z.string().trim().min(1).max(200),
-});
-
-export const updateMembershipSchema = z.strictObject({
-  status: z.enum(["active", "disabled"]),
-});

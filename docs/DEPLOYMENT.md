@@ -88,7 +88,7 @@ npm.cmd exec wrangler -- deploy
 1. Оба `/api/health` возвращают `200` и request ID.
 2. Public `/login` переводит на Organizer hostname.
 3. Anonymous Organizer `/api/v1/session` возвращает `401`.
-4. Разрешённый email проходит Turnstile, получает OTP, входит в `/app`; повторное использование OTP отклоняется.
+4. Новый email проходит Turnstile, получает OTP, автоматически создаёт личное пространство и входит в `/app`; повторное использование OTP отклоняется.
 5. Создать черновик, проверить autosave/reload, publish и одноразовую выдачу code/QR.
 6. Участник проходит open attempt, ответы восстанавливаются после reload, submit идемпотентен.
 7. Organizer видит результат и скачивает безопасный CSV.

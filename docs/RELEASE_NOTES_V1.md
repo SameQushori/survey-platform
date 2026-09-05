@@ -13,7 +13,7 @@ Vecta 1.0 полностью заменяет прежнюю Survey Platform. Н
 - полноценный редактор, immutable publication versions и publish checklist;
 - открытый/контролируемый participant access, server-authoritative attempts и autosave;
 - results dashboard, question analytics, attempt details и защищённый CSV;
-- email OTP для организаторов, Super Admin allow-list и revocable sessions;
+- открытая регистрация организаторов по email OTP, автоматическое личное пространство и revocable sessions;
 - Cloudflare Worker + Static Assets + D1 вместо Firebase;
 - Turnstile, rate limiting, tenant authorization, security headers и audit log;
 - 68 автоматических тестов и GitHub Actions quality gate.
