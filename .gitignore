@@ -42,6 +42,7 @@ blob-report/
 .vitest/
 .vite/
 *.tsbuildinfo
+*.cpuprofile
 
 # Local AI/agent working files (product documentation remains tracked)
 .codex/
@@ -51,6 +52,12 @@ blob-report/
 .ai/
 ai-artifacts/
 imagegen-output/
+.profile-readme-worktree/
+
+# Local design review evidence (the approved runtime asset stays tracked in src/assets)
+design/qa/*.png
+design/qa/*.jpg
+design/references/
 
 # Editor directories and files
 .vscode/*

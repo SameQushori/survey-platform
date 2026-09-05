@@ -1,6 +1,6 @@
 # Vecta — строгий план разработки
 
-Статус: утверждённый маршрут; Phase 0 закрыта, auth gate перенесён перед Phase 5  
+Статус: утверждённый маршрут; Phase 0–7 закрыты, Phase 8 реализована и ожидает ручной приёмки владельцем; Phase 9 не начата
 Дата фиксации: 2026-08-29
 
 ## 1. Назначение документа
@@ -121,8 +121,8 @@
 - D1 binding доступен только Worker.
 - R2 binding добавляется только при реализации файлового экспорта.
 - Turnstile проверяется Worker до создания публичной попытки.
-- Rate Limiting применяется к входу, проверке кодов и отправке попытки.
-- Cloudflare Access или внешний managed IdP подтверждает организаторов.
+- Rate Limiting применяется к organizer login, проверке participant-кодов и отправке попытки.
+- Organizer identity — заранее добавленный email + одноразовый код; Worker хранит только HMAC digest OTP/session и проверяет D1 membership.
 - Workers Logs используются без записи ответов, токенов и персональных данных.
 
 ### 5.3 Предварительные таблицы D1
@@ -313,6 +313,8 @@
 
 ## Phase 8 — Results, Analytics and Export
 
+Статус: **завершена 2026-09-01**. Реализация, fixture validation, tenant isolation, CSV neutralization и desktop/mobile QA зафиксированы в `PROJECT_STATUS.md`.
+
 ### Работы
 
 - Overview результатов.
@@ -330,6 +332,8 @@
 - Формулы в CSV нейтрализованы.
 
 ## Phase 9 — Hardening and Quality Gate
+
+Статус: **завершена 2026-09-01**. Evidence: `docs/PHASE_9_QUALITY_GATE.md` и `docs/SECURITY_THREAT_MODEL.md`.
 
 ### Работы
 
@@ -352,6 +356,8 @@
 
 ## Phase 10 — Firebase Retirement
 
+Статус: **завершена 2026-09-01** без миграции и архива legacy-данных по подтверждённому решению владельца. Evidence: `docs/PHASE_10_FIREBASE_RETIREMENT.md`.
+
 ### Работы
 
 - Не переносить существующие опросы, ответы и организаторов в D1.
@@ -367,6 +373,8 @@
 - Vecta больше не зависит от Firebase runtime.
 
 ## Phase 11 — Cloudflare Staging and Production
+
+Статус: **release gate с 2026-09-05**. Staging развёрнут; production D1, migrations, owner seed и environment-конфигурация готовы. До Worker deploy обязательны ручной OTP UAT, production secrets/Turnstile hostnames и Core Web Vitals. Evidence: `docs/PHASE_11_STAGING.md`, `docs/DEPLOYMENT.md`.
 
 ### Работы
 
@@ -387,9 +395,11 @@
 
 ## Phase 12 — Repository Finalization and Pull Request
 
+Статус: **в работе с 2026-09-05**. CI, README, deployment/rollback и release notes готовы; остаются финальный Git scan, commit/push, PR и профильный README.
+
 ### Работы
 
-- Удалить obsolete Firebase/demo файлы только после успешной проверки чистого Cloudflare runtime.
+- Проверить, что удалённые в Phase 10 obsolete Firebase/demo файлы не вернулись и чистый Cloudflare runtime успешно прошёл staging.
 - Финально проверить `.gitignore` и untracked artifacts.
 - Обновить README, architecture, setup, deployment и migration docs.
 - Сформировать один большой Pull Request с breaking-change summary.
@@ -405,7 +415,7 @@
 ## 7. Decision Gate 0 — результат
 
 1. **Данные:** Vecta начинает с чистой D1; старые Firebase-данные не мигрируются.
-2. **Вход организаторов:** решение отложено до финального теста и является блокирующим gate перед Phase 5.
+2. **Вход организаторов:** решение 2026-08-30 заменено 2026-09-01 — встроенный email One-time Code, HMAC digests и HttpOnly server-side session; Worker валидирует D1 membership.
 3. **Попытки:** добавляются открытый и контролируемый режимы участия согласно разделу 4.4.
 4. **Результат участника:** по умолчанию скрыт; при включении организатором показывается балл, но не answer key.
 5. **Текстовые ответы:** перенесены в post-MVP backlog и сейчас не реализуются.

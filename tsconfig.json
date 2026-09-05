@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node", "vitest/globals", "@cloudflare/vitest-plugin/types"]
+  },
+  "include": ["shared/**/*.ts", "tests/**/*.ts", "worker/**/*.ts", "worker-configuration.d.ts", "vite.config.ts", "vitest.worker.config.ts", "src/vite-env.d.ts", "src/main.tsx", "src/vecta/**/*.ts", "src/vecta/**/*.tsx"]
+}

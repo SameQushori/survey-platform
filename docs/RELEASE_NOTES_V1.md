@@ -1,0 +1,39 @@
+# Vecta 1.0 — Release Notes
+
+Дата release candidate: 2026-09-05
+
+## Что изменилось
+
+Vecta 1.0 полностью заменяет прежнюю Survey Platform. Новый продукт построен вокруг корпоративной оценки знаний и единого lifecycle: создать → опубликовать → провести → проанализировать → переоткрыть или выпустить новую версию.
+
+Основные изменения:
+
+- новый responsive интерфейс Vecta без legacy UI;
+- drag-and-drop board и безопасные обратные переходы;
+- полноценный редактор, immutable publication versions и publish checklist;
+- открытый/контролируемый participant access, server-authoritative attempts и autosave;
+- results dashboard, question analytics, attempt details и защищённый CSV;
+- email OTP для организаторов, Super Admin allow-list и revocable sessions;
+- Cloudflare Worker + Static Assets + D1 вместо Firebase;
+- Turnstile, rate limiting, tenant authorization, security headers и audit log;
+- 68 автоматических тестов и GitHub Actions quality gate.
+
+## Breaking changes
+
+- Firebase runtime, configuration и зависимости удалены.
+- Legacy Firebase данные и аккаунты не мигрируются по решению владельца.
+- Legacy URLs/components не являются публичным API и не поддерживаются.
+- Organizer authentication больше не использует общий пароль или клиентскую Firebase Auth.
+- Published versions immutable; изменение действующего теста создаёт следующую версию.
+
+## Известные release-gates
+
+Код и отдельная production D1 готовы. До production Worker deploy обязательны:
+
+- ручной staging OTP UAT владельца;
+- production Turnstile hostnames и secrets;
+- verified email sender либо осознанный owner-only режим Resend sandbox;
+- реальный Core Web Vitals trace;
+- production smoke и подтверждение merge владельцем.
+
+Эти пункты не заменяются mock credentials и не обходятся ослаблением authentication.
