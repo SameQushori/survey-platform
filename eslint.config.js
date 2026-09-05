@@ -19,6 +19,7 @@ export default defineConfig([
       'shared/**/*.ts',
       'tests/**/*.ts',
       'vite.config.ts',
+      'vitest.config.ts',
       'vitest.worker.config.ts',
     ],
     extends: [
