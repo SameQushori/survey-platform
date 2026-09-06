@@ -36,3 +36,12 @@
 - `npm run test:worker` — 26 passed.
 - `npm run build` — passed.
 - Chrome DevTools performance trace локально недоступен; Core Web Vitals перенесены в обязательный staging UAT Phase 11.
+
+## Финальный повторный gate — 2026-09-06
+
+- `wrangler types --check` подтверждает актуальность generated `Env` types.
+- Release-скан проверяет tracked/build-файлы на `.env*`, `.dev.vars*`, private keys, provider API keys, локальные caches и retired legacy paths.
+- Все четыре атомарные команды deployment проходят `--dry-run` с правильными Worker name, D1, rate limiter, `APP_ENV`, `AUTH_MODE` и hostnames.
+- Локальный browser smoke прошёл onboarding → local organizer → создание draft → redirect в editor → autosave → доступная публикация, logo navigation, profile/help, board и results.
+- Worker startup profile: bundle 320.44 KiB / gzip 67.03 KiB; active startup CPU 13.9 ms на локальной машине. Это диагностическое значение, не замена полевым Core Web Vitals.
+- Актуальный полный gate: 32 unit tests и 35 Worker/D1 integration tests; итоговый результат фиксируется CI PR.

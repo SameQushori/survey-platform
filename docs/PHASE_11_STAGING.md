@@ -1,7 +1,7 @@
 # Phase 11 — Cloudflare Staging
 
 Последнее обновление: 2026-09-06
-Статус: **текущий staging развёрнут на Resend sandbox; код переключён на Brevo, но новая версия ждёт sender/API key, ручной UAT и Core Web Vitals**.
+Статус: **автономная подготовка завершена; по решению владельца email OTP, новый deploy, Core Web Vitals и production smoke временно отложены**.
 
 ## Развёрнутые ресурсы
 
@@ -64,8 +64,13 @@ Production Worker deploy намеренно не выполняется до и�
 - Auth handoff regression исправлен 2026-09-05: обе staging-сборки получают явный `VITE_ORGANIZER_ORIGIN`; public CTA и прямой `/login` переходят на Organizer hostname. Открытая регистрация deployed в Public version `fcf05337-9b5c-4410-8d2b-fde5b4261680` и Organizer version `702e7110-7566-4fe2-85fa-1b614b8a6ed2`; remote health smoke, 32 unit и 34 Worker/D1 tests проходят.
 - Assessment board поддерживает обратные переходы с серверной state machine: reopen последней публикации и создание новой draft-version из immutable snapshot. История публикаций доступна в «Результатах»; старые attempts/results не перепривязываются.
 - Reversible workflow gate: typecheck/lint, 29 unit и 36 Worker/D1 tests, local desktop menu/modal QA без console errors и remote smoke. Незалогиненный вызов `/reopen` возвращает `401`.
+- Финальный локальный browser smoke 2026-09-06 подтвердил onboarding, local organizer handoff, redirect нового draft в editor, autosave, разблокировку publish, logo navigation, profile/help, результаты и доступные обратные переходы доски.
+- Все четыре атомарные команды `deploy:*` прошли `--dry-run`; они непосредственно перед Wrangler запускают правильную environment-specific сборку и исключают публикацию чужого flattened config.
+- `wrangler types --check`, release secret/artifact scan и локальный Worker startup profile проходят; compatibility date обновлена до `2026-09-06`.
 
-## Следующий обязательный gate
+## Отложенный внешний gate
+
+Владелец 2026-09-06 попросил завершить остальные этапы без ожидания auth-настройки. Поэтому ниже нет незавершённых автономных задач; пункты требуют внешнего sender/secrets, ручного браузерного UAT или разрешения на production deploy.
 
 1. Подтвердить sender в Brevo, интерактивно установить `BREVO_API_KEY`, собрать и deploy Organizer staging.
 2. Выполнить owner UAT входа по письму из `docs/ORGANIZER_AUTH_RUNBOOK.md`.

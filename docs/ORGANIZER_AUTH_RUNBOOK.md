@@ -58,10 +58,11 @@ npm.cmd exec wrangler -- secret put AUTH_EMAIL_FROM --config wrangler.jsonc --en
 Cloudflare Vite Plugin выбирает environment во время сборки. Сборка и deploy Organizer staging:
 
 ```powershell
-npm.cmd run build:staging:organizer
-npm.cmd exec wrangler -- deploy --dry-run --config dist/vecta/wrangler.json
-npm.cmd exec wrangler -- deploy --config dist/vecta/wrangler.json
+npm.cmd run deploy:staging:organizer -- --dry-run
+npm.cmd run deploy:staging:organizer
 ```
+
+Команда атомарна: сначала собирает `staging-organizer`, затем deploy-ит только созданный `dist/vecta/wrangler.json`.
 
 ## Staging UAT
 

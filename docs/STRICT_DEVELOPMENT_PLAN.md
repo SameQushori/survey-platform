@@ -1,7 +1,7 @@
 # Vecta — строгий план разработки
 
-Статус: утверждённый маршрут; Phase 0–7 закрыты, Phase 8 реализована и ожидает ручной приёмки владельцем; Phase 9 не начата
-Дата фиксации: 2026-08-29
+Статус: Phase 0–10 и Phase 12 закрыты; автономная часть Phase 11 завершена, внешние auth/performance/deploy gates отложены владельцем
+Дата фиксации: 2026-08-29; актуализировано 2026-09-06
 
 ## 1. Назначение документа
 
@@ -374,7 +374,7 @@
 
 ## Phase 11 — Cloudflare Staging and Production
 
-Статус: **release gate с 2026-09-05**. Staging развёрнут; production D1, migrations, owner seed и environment-конфигурация готовы. До Worker deploy обязательны ручной OTP UAT, production secrets/Turnstile hostnames и Core Web Vitals. Evidence: `docs/PHASE_11_STAGING.md`, `docs/DEPLOYMENT.md`.
+Статус: **автономная часть завершена 2026-09-06; внешние gates отложены владельцем**. Staging развёрнут; production D1, migrations, environment-конфигурация и атомарные dry-run deploy-команды готовы. OTP UAT, production secrets/Turnstile hostnames, Core Web Vitals и реальный production deploy требуют внешнего доступа/решения. Evidence: `docs/PHASE_11_STAGING.md`, `docs/DEPLOYMENT.md`.
 
 ### Работы
 
@@ -395,7 +395,7 @@
 
 ## Phase 12 — Repository Finalization and Pull Request
 
-Статус: **в работе с 2026-09-05**. CI, README, deployment/rollback и release notes готовы; остаются финальный Git scan, commit/push, PR и профильный README.
+Статус: **завершена 2026-09-06**. CI, README, deployment/rollback, release notes, Git/release scan, PR #1 и профильный README готовы; merge остаётся решением владельца.
 
 ### Работы
 

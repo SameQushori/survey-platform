@@ -64,7 +64,7 @@ npm run dev
 npm run quality
 ```
 
-Gate включает typecheck, ESLint с `no-floating-promises`, unit-тесты, Worker/D1 integration-тесты, production build и полный `npm audit`. GitHub Actions запускает тот же набор на push и pull request.
+Gate включает проверку актуальности Cloudflare types, typecheck, ESLint с `no-floating-promises`, unit-тесты, Worker/D1 integration-тесты, production build, release-скан tracked/build-файлов и полный `npm audit`. GitHub Actions запускает тот же набор на push и pull request.
 
 После изменения Cloudflare bindings:
 
@@ -77,12 +77,12 @@ npm run cf:typegen
 Environment выбирается **во время Vite build**. Нельзя собирать local bundle и затем подменять bindings флагом `wrangler deploy --env`.
 
 ```bash
-npm run build:staging:public
-npx wrangler deploy
+npm run deploy:staging:public
 
-npm run build:staging:organizer
-npx wrangler deploy
+npm run deploy:staging:organizer
 ```
+
+Каждая deploy-команда сначала собирает правильный environment, затем публикует созданный `dist/vecta/wrangler.json`. Безопасная проверка без публикации: добавить `-- --dry-run`.
 
 Production D1 и конфигурация подготовлены отдельно. Пошаговая настройка secrets, Turnstile hostnames, migrations, smoke и rollback находится в [Deployment Runbook](docs/DEPLOYMENT.md). Состояние внешних release-gates — в [PROJECT_STATUS.md](PROJECT_STATUS.md).
 

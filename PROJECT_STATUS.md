@@ -4,7 +4,7 @@
 
 Версия: **1.0.0 release candidate**
 
-Текущая фаза: **Phase 11 external UAT; Phase 12 завершена**
+Текущая фаза: **вся автономная разработка завершена; Phase 11 оставлена на внешние release-gates**
 
 Этот файл — каноническая точка продолжения в другом чате. Сначала прочитать его, затем `docs/STRICT_DEVELOPMENT_PLAN.md`, `docs/DECISIONS.md` и проверить фактический `git status`.
 
@@ -30,18 +30,23 @@
 - Удалён production URL-переключатель mock loading/empty/error states.
 - Dependency stack обновлён в пределах текущих major; полный audit — 0 vulnerabilities.
 - Добавлен GitHub Actions quality gate и документация deployment/rollback/release.
+- Добавлены атомарные Cloudflare deploy-команды: каждая сама собирает и публикует только выбранный environment.
+- Удалены оставшиеся legacy-отчёты, небезопасные Firebase rules и старый SurveyPro HTML-макет; повторное попадание этих файлов блокирует release-скан.
 
 ## Автоматический release gate
 
 На 2026-09-06 проходит:
 
 - `npm run typecheck`;
+- `npm run verify:types`;
 - `npm run lint`;
 - 32 unit tests в 8 файлах;
 - 35 Worker/D1 integration tests в 6 файлах;
 - `npm run build`;
 - `npm audit --audit-level=moderate` — 0 vulnerabilities;
-- post-build scan — `.env*`/`.dev.vars*` отсутствуют в `dist`.
+- `npm run verify:release` — tracked-файлы и build проверены на secrets, private keys, локальные артефакты и retired legacy paths;
+- все четыре staging/production public/organizer deploy-команды проходят `--dry-run`;
+- локальный Worker startup profile: bundle 320.44 KiB / gzip 67.03 KiB, active startup CPU 13.9 ms.
 
 ## Cloudflare inventory
 
@@ -68,13 +73,15 @@
 4. Добавить production hostnames в Turnstile, переключить production config на проверенный Brevo sender и интерактивно задать production secrets.
 5. Снять LCP/CLS/INP через Chrome DevTools MCP или вручную в DevTools. В текущей среде DevTools MCP не подключён, поэтому метрики не вымышлялись.
 
-## Точный следующий маршрут
+## Отложенные внешние действия
 
-1. Завершить Brevo sender/API-key setup, deploy staging Organizer и выполнить OTP UAT по `docs/ORGANIZER_AUTH_RUNBOOK.md`.
-2. После подтверждённой доставки переключить production Organizer на Brevo и настроить четыре production secrets только интерактивно, без shell history/Git.
-3. Выполнить `build:production:public` → dry-run → deploy, затем `build:production:organizer` → dry-run → deploy.
-4. Проверить health, anonymous session `401`, login/OTP, authoring/publish, participant submit, results/export и rollback.
-5. Провести review PR #1 и merge только по решению владельца.
+По решению владельца от 2026-09-06 эти пункты не блокируют продолжение разработки и оставлены на совместный финальный проход:
+
+1. Brevo sender/API-key, новый deploy Organizer staging и OTP UAT по `docs/ORGANIZER_AUTH_RUNBOOK.md`.
+2. Production Turnstile hostnames и secrets, переключение Organizer на проверенный email provider.
+3. Реальный Core Web Vitals trace: Chrome DevTools MCP в текущей среде отсутствует, поэтому метрики не вымышлялись.
+4. Production deploy/smoke и проверка rollback после успешного auth UAT.
+5. Review и merge PR #1 только по решению владельца.
 
 ## Фазы
 
@@ -89,12 +96,12 @@
 - [x] Phase 8 — Results, Analytics and Export
 - [x] Phase 9 — Hardening and Quality Gate
 - [x] Phase 10 — Firebase Retirement
-- [ ] Phase 11 — code/resources ready; external OTP/performance UAT and production secrets/deploy remain
-- [x] Phase 12 — repository finalized; branch pushed, PR #1 открыт, GitHub Actions зелёный
+- [ ] Phase 11 — автономная часть закрыта; внешний OTP/performance UAT и production secrets/deploy отложены владельцем
+- [x] Phase 12 — repository finalized; release-скан встроен в CI, branch/PR/profile README подготовлены
 
 Профильный репозиторий `SameQushori/SameQushori` обновлён: Vecta добавлена первой в Featured Projects, commit `9442d3f` отправлен в `main`.
 
-Основной репозиторий: открытая регистрация и удаление Super Admin зафиксированы commit `7b6bc0c` в `feat/vecta-rebuild`; PR <https://github.com/SameQushori/survey-platform/pull/1> открыт в `main`, mergeable, оба quality checks прошли. PR не merge-ился.
+Основной репозиторий: PR <https://github.com/SameQushori/survey-platform/pull/1> открыт из `feat/vecta-rebuild` в `main`. PR не merge-ился; актуальный commit и CI фиксируются после каждого release-изменения.
 
 ## Правила продолжения
 

@@ -23,7 +23,7 @@
 | Тесты | `exec-1e3d913a-798d-4dbb-9467-59230d88fa60.png` | `design/qa/tests-implementation-1440x1024.png` | `design/qa/comparison-tests.jpg` | Доска, колонки, карточки и состояния совпадают по смыслу и визуальной системе |
 | Результаты | `exec-c3c506cb-acb3-4894-b64c-4467acdb4172.png` | `design/qa/results-implementation-1440x1024.png` | `design/qa/comparison-results.jpg` | Аналитика, метрики и блок внимания соответствуют; переполнение устранено |
 
-Локальные PNG/JPG evidence-файлы намеренно исключены из Git. Производственный preview-asset находится в `src/assets/vecta/board-preview.png` и отслеживается репозиторием.
+Локальные PNG/JPG evidence-файлы намеренно исключены из Git. Производственный preview-asset находится в `src/assets/vecta/board-preview.webp` и отслеживается репозиторием.
 
 ## Проверенные состояния и действия
 
@@ -94,15 +94,23 @@
 
 ## Остаточные замечания
 
-- P3: реальная organizer auth и Cloudflare data integration находятся за пределами этого визуального implementation pass и остаются в строгом плане.
-- P3: финальное доменное имя, email поддержки и пункты профиля требуют продуктового решения перед production wiring.
-- Legacy ESLint baseline всё ещё содержит ранее зафиксированные ошибки; новый TypeScript-срез защищён `tsc` и unit-тестами.
+- P3: ручной email OTP UAT отложен владельцем до совместной настройки sender/secrets.
+- P3: реальные Core Web Vitals требуют Chrome DevTools MCP или ручного production/staging trace; capability в текущей среде отсутствует.
+- Собственный домен и внешний support channel не входят в текущий deploy gate; интерфейс не показывает фиктивные контакты.
+
+### Revision 2026-09-06 — final local smoke
+
+- Onboarding, local organizer handoff, `/app`, board и results открываются без route ошибок.
+- Создание draft сразу переводит в `/app/tests/:id/edit`; заполнение вопроса сохраняется, статус меняется на «Сохранено», publish становится доступен.
+- Логотип возвращает в `/app`; profile menu и help dialog доступны и закрываются штатно.
+- Меню завершённого теста предлагает обратные переходы в «Черновики» и «Запущены».
+- API smoke: health, SPA shell, local session и organization assessments возвращают `200`.
 
 ## Итог
 
 P0: 0
 P1: 0
 P2: 0
-P3: 2 отложенных продуктовых/интеграционных пункта, не блокирующих review прототипа.
+P3: 2 отложенных внешних release-gates, не блокирующих завершение автономной разработки.
 
 **Final result: passed**

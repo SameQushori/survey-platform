@@ -69,20 +69,18 @@ Cloudflare Vite plugin flatten-ит выбранный environment в `dist/vect
 Public:
 
 ```powershell
-npm.cmd run build:production:public
-npm.cmd exec wrangler -- deploy --dry-run
-npm.cmd exec wrangler -- deploy
+npm.cmd run deploy:production:public -- --dry-run
+npm.cmd run deploy:production:public
 ```
 
 Organizer:
 
 ```powershell
-npm.cmd run build:production:organizer
-npm.cmd exec wrangler -- deploy --dry-run
-npm.cmd exec wrangler -- deploy
+npm.cmd run deploy:production:organizer -- --dry-run
+npm.cmd run deploy:production:organizer
 ```
 
-Не собирать оба environment до первого deploy: второй build заменяет flattened output первого.
+Каждая команда сама собирает нужный environment непосредственно перед deploy, поэтому flattened output другого Worker не может быть опубликован по ошибке.
 
 ## Smoke после deploy
 

@@ -54,6 +54,15 @@ ai-artifacts/
 imagegen-output/
 .profile-readme-worktree/
 
+# Retired Survey Platform / Firebase artifacts
+/CACHE_FIX.md
+/FIXES_SUMMARY.md
+/RESPONSIVE_IMPROVEMENTS.md
+/SURVEY_FIX.md
+/UI_IMPROVEMENTS.md
+/firestore.rules
+/survey_platform_homepage.html
+
 # Local design review evidence (the approved runtime asset stays tracked in src/assets)
 design/qa/*.png
 design/qa/*.jpg

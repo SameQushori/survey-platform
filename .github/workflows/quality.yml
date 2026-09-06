@@ -23,8 +23,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run verify:types
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:all
       - run: npm run build
+      - run: npm run verify:release
       - run: npm audit --audit-level=moderate

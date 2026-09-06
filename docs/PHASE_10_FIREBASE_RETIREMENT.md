@@ -15,6 +15,8 @@
 - Устаревшие Firebase setup/quick-fix документы.
 - Dependencies `firebase`, `file-saver` и `gh-pages` вместе с их lockfile graph.
 - ESLint-исключения для legacy-кода.
+- Root-level legacy reports `CACHE_FIX.md`, `FIXES_SUMMARY.md`, `RESPONSIVE_IMPROVEMENTS.md`, `SURVEY_FIX.md`, `UI_IMPROVEMENTS.md`.
+- Небезопасный allow-all `firestore.rules` и отдельный старый `survey_platform_homepage.html`/SurveyPro mock.
 
 ## Проверка retirement
 
@@ -23,6 +25,7 @@
 - В active source, Worker, shared contracts, migrations и tests нет Firebase imports или endpoint references.
 - В tracked runtime-конфигурации нет Firebase credentials/generated config.
 - Production bundle не содержит Firebase SDK markers/endpoints.
+- `npm run verify:release` блокирует повторное появление удалённых legacy paths и секретных/local artifacts.
 - Полный typecheck, lint, unit, Worker/D1 integration, build и dependency audit проходят после удаления.
 
 ## Breaking-change note
