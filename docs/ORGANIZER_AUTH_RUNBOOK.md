@@ -1,7 +1,7 @@
 # Organizer Email OTP Runbook
 
-Обновлено: 2026-09-05
-Статус: открытая регистрация реализована; staging ждёт ручного UAT с произвольным адресом после настройки verified sending domain.
+Обновлено: 2026-09-06
+Статус: открытая регистрация и Brevo adapter реализованы; staging ждёт подтверждения sender, установки `BREVO_API_KEY`, deploy и ручного UAT.
 
 ## Архитектура
 
@@ -11,7 +11,7 @@
 - Код действует 10 минут, допускает не более 5 неудачных проверок и после успешного входа становится недействительным.
 - D1 хранит только HMAC digest кода и session token; plaintext-коды и токены не сохраняются.
 - Браузер получает `__Host-vecta_session` с `Secure`, `HttpOnly`, `SameSite=Lax`, `Path=/` и сроком 12 часов.
-- Если провайдер не принял письмо для нового адреса, challenge и неподтверждённый provisional user удаляются.
+- Запрос считается успешным только после принятия письма провайдером. При отказе API возвращает `502 email_delivery_failed`, а challenge и неподтверждённый provisional user удаляются.
 - Общей Super Admin-роли и allow-list нет. Доступ к данным определяется только активным membership конкретной организации.
 
 ## Защита от злоупотреблений
@@ -28,8 +28,8 @@
 ```text
 APP_ENV=staging|production
 AUTH_MODE=session
-AUTH_EMAIL_PROVIDER=resend
-AUTH_EMAIL_FROM=Vecta <login@verified-domain.example>
+AUTH_EMAIL_PROVIDER=brevo|resend
+AUTH_EMAIL_FROM=Vecta <verified-sender@example.com>
 TURNSTILE_HOSTNAMES=<exact organizer hostname>
 ```
 
@@ -39,25 +39,28 @@ Secrets вводятся только интерактивно через Wrangl
 TURNSTILE_SECRET
 ATTEMPT_TOKEN_SECRET
 AUTH_TOKEN_SECRET
-RESEND_API_KEY
+BREVO_API_KEY или RESEND_API_KEY — строго в соответствии с выбранным provider
 ```
 
 `AUTH_TOKEN_SECRET` должен быть случайным и не короче 32 байт. Его ротация завершает активные organizer sessions и инвалидирует незавершённые OTP.
 
-Для staging sender `Vecta <onboarding@resend.dev>` отправляет письма только на email владельца Resend-аккаунта. Открытая регистрация на произвольные адреса требует собственного verified domain и sender на нём.
+Staging переключён на Brevo. Выбранный Gmail-адрес сначала нужно зарегистрировать и подтвердить в Brevo, а полное значение `Vecta <адрес>` сохранить как Cloudflare secret `AUTH_EMAIL_FROM`. Собственный домен для такого переходного sender не обязателен, но Brevo может заменить Gmail/Yahoo sender техническим доменом; перед production следует оценить доставляемость и позднее подключить собственный домен.
+
+Resend adapter оставлен для обратного переключения. Его sandbox sender `onboarding@resend.dev` отправляет письма только на email владельца Resend-аккаунта и не подходит для открытой регистрации.
 
 Secrets запрещено помещать в `wrangler.jsonc`, `.env`, Git, shell history, документацию или логи. Пример интерактивной команды:
 
 ```powershell
-npm.cmd exec wrangler -- secret put RESEND_API_KEY --config wrangler.jsonc --env staging-organizer
+npm.cmd exec wrangler -- secret put BREVO_API_KEY --config wrangler.jsonc --env staging-organizer
+npm.cmd exec wrangler -- secret put AUTH_EMAIL_FROM --config wrangler.jsonc --env staging-organizer
 ```
 
 Cloudflare Vite Plugin выбирает environment во время сборки. Сборка и deploy Organizer staging:
 
 ```powershell
 npm.cmd run build:staging:organizer
-npm.cmd exec wrangler -- deploy --dry-run
-npm.cmd exec wrangler -- deploy
+npm.cmd exec wrangler -- deploy --dry-run --config dist/vecta/wrangler.json
+npm.cmd exec wrangler -- deploy --config dist/vecta/wrangler.json
 ```
 
 ## Staging UAT
@@ -70,11 +73,11 @@ npm.cmd exec wrangler -- deploy
 6. Пять раз ввести неверный код — challenge должен стать недействительным.
 7. Выйти через меню профиля, обновить `/app` — должен открыться экран входа.
 8. Зарегистрировать второй email и убедиться, что он не видит тесты первого пользователя.
-9. Проверить, что delivery error не оставляет provisional user и не пишет email в Worker logs.
+9. Временно задать неверный sender в отдельном тестовом контуре: UI должен показать ошибку отправки, provisional user/challenge не должны остаться, email не должен попасть в Worker logs.
 
 ## Отзыв доступа и аварийные действия
 
 - Для блокировки вручную перевести user в `disabled` и выставить `revoked_at` активным sessions; self-service вход не должен реактивировать его.
 - При компрометации session secret ротировать `AUTH_TOKEN_SECRET`.
-- При компрометации Resend key отозвать ключ у провайдера, создать новый и обновить Worker secret.
+- При компрометации Brevo/Resend key отозвать ключ у выбранного провайдера, создать новый и обновить соответствующий Worker secret.
 - Rollback: вернуть предыдущую Worker version. D1 migrations остаются forward-only.

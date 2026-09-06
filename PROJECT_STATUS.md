@@ -1,6 +1,6 @@
 # Vecta — Project Status / Handoff
 
-Последнее обновление: 2026-09-05
+Последнее обновление: 2026-09-06
 
 Версия: **1.0.0 release candidate**
 
@@ -33,14 +33,14 @@
 
 ## Автоматический release gate
 
-На 2026-09-05 проходит:
+На 2026-09-06 проходит:
 
 - `npm run typecheck`;
 - `npm run lint`;
 - 32 unit tests в 8 файлах;
-- 34 Worker/D1 integration tests в 6 файлах;
+- 35 Worker/D1 integration tests в 6 файлах;
 - `npm run build`;
-- `npm audit --audit-level=moderate --offline` — 0 vulnerabilities; online registry endpoint 2026-09-05 дважды вернул `ECONNRESET`;
+- `npm audit --audit-level=moderate` — 0 vulnerabilities;
 - post-build scan — `.env*`/`.dev.vars*` отсутствуют в `dist`.
 
 ## Cloudflare inventory
@@ -58,20 +58,20 @@
 - Применены все 6 migrations, создано 18 application tables, legacy privileged users: `0`, `PRAGMA foreign_key_check` чистый.
 - Существующий production owner сохранён как обычный Organizer; migration `0006` обнуляет legacy platform role.
 - `wrangler.jsonc` содержит отдельные `production-public` / `production-organizer`, Worker names `vecta-public` / `vecta-organizer`, отдельные rate-limit namespaces и D1 binding.
-- Production Workers не публикуются до настройки их secrets и успешного OTP UAT: deploy без Turnstile/Resend создал бы заведомо неработающий или небезопасный вход.
+- Production Workers не публикуются до настройки secrets и успешного OTP UAT: deploy без Turnstile/рабочего email provider создал бы заведомо неработающий или небезопасный вход.
 
 ## Внешние release-gates
 
-1. Owner проходит staging вход: Turnstile → письмо → OTP → `/app` → logout → повторный вход.
-2. После успеха удалить устаревший staging secret `ORGANIZER_ACCESS_CODE`.
-3. Добавить production hostnames в Turnstile и интерактивно задать production secrets: `TURNSTILE_SECRET`, `ATTEMPT_TOKEN_SECRET`, `AUTH_TOKEN_SECRET`, `RESEND_API_KEY`.
-4. Для фактически открытой регистрации нужен verified sending domain: Resend `onboarding@resend.dev` отправляет только на email владельца Resend. Домена сейчас нет.
+1. Подтвердить выбранный sender в Brevo, интерактивно установить staging `AUTH_EMAIL_FROM` и `BREVO_API_KEY`, затем развернуть новую Organizer version.
+2. Owner проходит staging вход на отдельный тестовый адрес: Turnstile → письмо → OTP → `/app` → logout → повторный вход.
+3. После успеха удалить устаревший staging secret `ORGANIZER_ACCESS_CODE`.
+4. Добавить production hostnames в Turnstile, переключить production config на проверенный Brevo sender и интерактивно задать production secrets.
 5. Снять LCP/CLS/INP через Chrome DevTools MCP или вручную в DevTools. В текущей среде DevTools MCP не подключён, поэтому метрики не вымышлялись.
 
 ## Точный следующий маршрут
 
-1. Выполнить ручной staging OTP UAT по `docs/ORGANIZER_AUTH_RUNBOOK.md`.
-2. Настроить четыре production secrets только интерактивно, без shell history/Git.
+1. Завершить Brevo sender/API-key setup, deploy staging Organizer и выполнить OTP UAT по `docs/ORGANIZER_AUTH_RUNBOOK.md`.
+2. После подтверждённой доставки переключить production Organizer на Brevo и настроить четыре production secrets только интерактивно, без shell history/Git.
 3. Выполнить `build:production:public` → dry-run → deploy, затем `build:production:organizer` → dry-run → deploy.
 4. Проверить health, anonymous session `401`, login/OTP, authoring/publish, participant submit, results/export и rollback.
 5. Провести review PR #1 и merge только по решению владельца.

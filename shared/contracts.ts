@@ -21,6 +21,7 @@ export const apiProblemCodes = [
   "attempt_expired",
   "rate_limited",
   "turnstile_failed",
+  "email_delivery_failed",
   "idempotency_conflict",
   "internal_error",
 ] as const;

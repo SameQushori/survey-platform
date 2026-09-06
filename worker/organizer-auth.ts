@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { OrganizerLoginChallengeDTO, OrganizerLoginVerificationDTO } from "../shared/contracts";
 import { authSecretDigest, organizerSessionCookie, verifyAuthSecretDigest } from "./auth";
+import { EmailProviderError, emailDeliveryConfigured, sendTransactionalEmail } from "./email-delivery";
 import { jsonResponse, methodNotAllowed, problemResponse, readJsonBody } from "./http";
 import { verifyTurnstile } from "./turnstile";
 
@@ -32,16 +33,6 @@ interface ChallengeRow {
   user_id: string;
 }
 
-class EmailProviderError extends Error {
-  readonly status: number;
-
-  constructor(status: number) {
-    super(`Email provider returned ${status}`);
-    this.name = "EmailProviderError";
-    this.status = status;
-  }
-}
-
 function opaqueToken(bytes: number): string {
   const value = new Uint8Array(bytes);
   crypto.getRandomValues(value);
@@ -67,12 +58,6 @@ async function allowedByRateLimit(env: Env, key: string): Promise<boolean> {
   return result.success;
 }
 
-function emailDeliveryConfigured(env: Env): boolean {
-  return env.AUTH_EMAIL_PROVIDER === "resend"
-    && Boolean(env.AUTH_EMAIL_FROM?.trim())
-    && Boolean(env.RESEND_API_KEY?.trim());
-}
-
 function loginEmail(code: string): { html: string; subject: string; text: string } {
   const subject = "Код входа в Vecta";
   const text = `Код входа в Vecta: ${code}\n\nОн действует 10 минут и подходит только для одного входа. Если вы не запрашивали код, просто проигнорируйте это письмо.`;
@@ -87,35 +72,10 @@ async function deliverLoginCode(
   email: string,
   code: string,
   removeProvisionalUserOnFailure: boolean,
-): Promise<void> {
+): Promise<boolean> {
   try {
-    if (!emailDeliveryConfigured(env)) throw new Error("Email delivery is not configured");
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
-    let response: Response;
-    try {
-      const message = loginEmail(code);
-      response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-          "Idempotency-Key": challengeId,
-          "User-Agent": "Vecta/1.0 (+https://github.com/SameQushori/survey-platform)",
-        },
-        body: JSON.stringify({
-          from: env.AUTH_EMAIL_FROM,
-          to: [email],
-          subject: message.subject,
-          html: message.html,
-          text: message.text,
-        }),
-        signal: controller.signal,
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
-    if (!response.ok) throw new EmailProviderError(response.status);
+    await sendTransactionalEmail(env, challengeId, email, loginEmail(code));
+    return true;
   } catch (error) {
     const cleanup: D1PreparedStatement[] = [
       env.DB.prepare("DELETE FROM organizer_auth_challenges WHERE id = ?1 AND status = 'active'").bind(challengeId),
@@ -135,8 +95,10 @@ async function deliverLoginCode(
       challengeId,
       userId,
       errorName: error instanceof Error ? error.name : "UnknownError",
+      provider: error instanceof EmailProviderError ? error.provider : env.AUTH_EMAIL_PROVIDER,
       providerStatus: error instanceof EmailProviderError ? error.status : null,
     }));
+    return false;
   }
 }
 
@@ -167,7 +129,7 @@ async function findOrCreateLoginUser(env: Env, email: string, now: number): Prom
   }
 }
 
-async function requestCode(request: Request, env: Env, ctx: ExecutionContext, requestId: string): Promise<Response> {
+async function requestCode(request: Request, env: Env, requestId: string): Promise<Response> {
   if (request.method !== "POST") return methodNotAllowed(requestId, ["POST"]);
   const raw = await readJsonBody(request, requestId);
   if (raw instanceof Response) return raw;
@@ -214,7 +176,10 @@ async function requestCode(request: Request, env: Env, ctx: ExecutionContext, re
        VALUES (?1, ?2, ?3, 'active', 0, ?4, ?5)`,
     ).bind(challengeId, user.id, codeDigest, expiresAt, now),
   ]);
-  ctx.waitUntil(deliverLoginCode(env, challengeId, user.id, user.email, code, user.created));
+  const delivered = await deliverLoginCode(env, challengeId, user.id, user.email, code, user.created);
+  if (!delivered) {
+    return problemResponse({ code: "email_delivery_failed", requestId, status: 502, title: "Не удалось отправить код. Попробуйте ещё раз" });
+  }
 
   return jsonResponse(body, requestId, { status: 202 });
 }
@@ -329,12 +294,12 @@ async function logout(request: Request, env: Env, requestId: string): Promise<Re
 export async function routeOrganizerAuth(
   request: Request,
   env: Env,
-  ctx: ExecutionContext,
+  _ctx: ExecutionContext,
   requestId: string,
 ): Promise<Response | null> {
   if (env.AUTH_MODE !== "session") return null;
   const pathname = new URL(request.url).pathname;
-  if (pathname === "/api/v1/auth/request-code") return requestCode(request, env, ctx, requestId);
+  if (pathname === "/api/v1/auth/request-code") return requestCode(request, env, requestId);
   if (pathname === "/api/v1/auth/verify-code") return verifyCode(request, env, requestId);
   if (pathname === "/api/v1/auth/logout") return logout(request, env, requestId);
   return null;

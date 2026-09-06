@@ -1,5 +1,14 @@
 # Vecta — Decision Log
 
+## 2026-09-06 — Brevo для staging OTP и подтверждённая доставка
+
+- Decision: staging переключается с ограниченного sandbox sender Resend на Brevo Transactional Email; Resend adapter остаётся для обратного переключения.
+- Sender: переходный sender — подтверждённый Gmail-адрес, сохранённый как Cloudflare secret `AUTH_EMAIL_FROM`; собственный домен не блокирует staging UAT, но остаётся желательным до публичного production-трафика.
+- Correctness: `/auth/request-code` возвращает `202` только после принятия письма provider API. Отказ/timeout возвращает `502 email_delivery_failed`, удаляет challenge и provisional user и показывается в существующей login-модалке.
+- Security: `BREVO_API_KEY` хранится только как Cloudflare Worker secret; логи содержат provider/status и opaque identifiers, но не email, OTP или provider body.
+- Supersedes: асинхронная fake-success семантика `waitUntil` из решения 2026-09-02 больше не применяется, поскольку фактическая отправка влияет на корректность ответа.
+- Rollout: staging deploy блокируется до подтверждения sender и интерактивной установки `BREVO_API_KEY`.
+
 ## 2026-09-05 — Открытая регистрация организаторов
 
 - Decision: любой пользователь с доступом к указанному email может подтвердить шестизначный OTP и получить собственное личное пространство с membership `organizer`.

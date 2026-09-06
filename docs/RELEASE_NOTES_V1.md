@@ -1,6 +1,6 @@
 # Vecta 1.0 — Release Notes
 
-Дата release candidate: 2026-09-05
+Дата release candidate: 2026-09-06
 
 ## Что изменилось
 
@@ -16,7 +16,7 @@ Vecta 1.0 полностью заменяет прежнюю Survey Platform. Н
 - открытая регистрация организаторов по email OTP, автоматическое личное пространство и revocable sessions;
 - Cloudflare Worker + Static Assets + D1 вместо Firebase;
 - Turnstile, rate limiting, tenant authorization, security headers и audit log;
-- 68 автоматических тестов и GitHub Actions quality gate.
+- 67 автоматических тестов и GitHub Actions quality gate.
 
 ## Breaking changes
 
@@ -32,7 +32,7 @@ Vecta 1.0 полностью заменяет прежнюю Survey Platform. Н
 
 - ручной staging OTP UAT владельца;
 - production Turnstile hostnames и secrets;
-- verified email sender либо осознанный owner-only режим Resend sandbox;
+- подтверждённый Brevo sender, API key и успешный staging OTP UAT;
 - реальный Core Web Vitals trace;
 - production smoke и подтверждение merge владельцем.
 

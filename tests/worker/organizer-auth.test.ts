@@ -61,6 +61,15 @@ function allowedEnv(): Env {
   } as unknown as Env;
 }
 
+function brevoEnv(): Env {
+  return {
+    ...allowedEnv(),
+    AUTH_EMAIL_PROVIDER: "brevo",
+    AUTH_EMAIL_FROM: "Vecta <sender@example.test>",
+    BREVO_API_KEY: "xkeysib-test-key",
+  } as Env;
+}
+
 describe("Vecta organizer session authentication", () => {
   it("verifies HMAC digests without comparing the raw secret", async () => {
     const testEnv = sessionEnv();
@@ -169,6 +178,37 @@ describe("Vecta organizer session authentication", () => {
       .rejects.toMatchObject({ status: 401 });
   });
 
+  it("delivers organizer OTP through the configured Brevo adapter", async () => {
+    allowTurnstile();
+    const testEnv = brevoEnv();
+    const email = `brevo-${crypto.randomUUID()}@example.test`;
+    let deliveredCode = "";
+    network.use(http.post("https://api.brevo.com/v3/smtp/email", async ({ request }) => {
+      expect(request.headers.get("api-key")).toBe("xkeysib-test-key");
+      const body = await request.json() as {
+        headers: Record<string, string>;
+        htmlContent: string;
+        sender: { email: string; name?: string };
+        tags: string[];
+        to: Array<{ email: string }>;
+      };
+      deliveredCode = body.htmlContent.match(/\b\d{6}\b/)?.[0] ?? "";
+      expect(body.sender).toEqual({ email: "sender@example.test", name: "Vecta" });
+      expect(body.to).toEqual([{ email }]);
+      expect(body.headers["X-Vecta-Challenge"]).toMatch(/^challenge_/);
+      expect(body.tags).toEqual(["organizer-login"]);
+      return HttpResponse.json({ messageId: "<email_test@brevo.test>" }, { status: 201 });
+    }));
+
+    const response = await routeOrganizerAuth(authRequest("/api/v1/auth/request-code", {
+      email,
+      turnstileToken: "brevo-token",
+    }), testEnv, executionContext().ctx, crypto.randomUUID());
+
+    expect(response?.status).toBe(202);
+    expect(deliveredCode).toMatch(/^\d{6}$/);
+  });
+
   it("makes a code unusable after five failed attempts", async () => {
     allowTurnstile();
     const testEnv = allowedEnv();
@@ -240,29 +280,32 @@ describe("Vecta organizer session authentication", () => {
     const testEnv = allowedEnv();
     const email = `failed-${crypto.randomUUID()}@example.test`;
     network.use(http.post("https://api.resend.com/emails", () => new HttpResponse(null, { status: 500 })));
-    const context = executionContext();
     const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     const response = await routeOrganizerAuth(authRequest("/api/v1/auth/request-code", {
       email,
       turnstileToken: "registration-token",
-    }), testEnv, context.ctx, crypto.randomUUID());
-    const body = await response?.json() as { challengeId: string };
-    await context.drain();
+    }), testEnv, executionContext().ctx, crypto.randomUUID());
 
-    expect(response?.status).toBe(202);
+    expect(response?.status).toBe(502);
+    await expect(response?.json()).resolves.toMatchObject({
+      code: "email_delivery_failed",
+      title: "Не удалось отправить код. Попробуйте ещё раз",
+    });
+    expect(errorLog).toHaveBeenCalledOnce();
+    const logged = String(errorLog.mock.calls[0]?.[0]);
+    const loggedPayload = JSON.parse(logged) as { challengeId: string };
     const stored = await testEnv.DB.prepare("SELECT id FROM organizer_auth_challenges WHERE id = ?1")
-      .bind(body.challengeId).first();
+      .bind(loggedPayload.challengeId).first();
     expect(stored).toBeNull();
     const provisionalUser = await testEnv.DB.prepare("SELECT id FROM users WHERE lower(email) = ?1")
       .bind(email).first();
     expect(provisionalUser).toBeNull();
-    expect(errorLog).toHaveBeenCalledOnce();
-    const logged = String(errorLog.mock.calls[0]?.[0]);
     expect(logged).not.toContain(email);
     expect(JSON.parse(logged)).toMatchObject({
       errorName: "EmailProviderError",
       event: "organizer_login_email_failed",
+      provider: "resend",
       providerStatus: 500,
     });
     errorLog.mockRestore();

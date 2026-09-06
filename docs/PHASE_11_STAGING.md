@@ -1,7 +1,7 @@
 # Phase 11 — Cloudflare Staging
 
-Последнее обновление: 2026-09-05
-Статус: **staging развёрнут; production D1/config подготовлены; ожидаются ручной owner UAT, secrets и Core Web Vitals**.
+Последнее обновление: 2026-09-06
+Статус: **текущий staging развёрнут на Resend sandbox; код переключён на Brevo, но новая версия ждёт sender/API key, ручной UAT и Core Web Vitals**.
 
 ## Развёрнутые ресурсы
 
@@ -13,7 +13,7 @@
 | Turnstile | managed widget `vecta-staging` | public и organizer hostnames разрешены; secret ротирован 2026-09-01 |
 | Participant rate limit | namespace `2001`, 20 requests / 60 seconds | привязан к обоим staging Workers |
 | Organizer auth rate limit | namespace `2002`, 5 requests / 60 seconds | привязан к Organizer Worker |
-| Existing secrets | public: `TURNSTILE_SECRET`, `ATTEMPT_TOKEN_SECRET`; organizer: те же + `AUTH_TOKEN_SECRET`, `RESEND_API_KEY`, старый `ORGANIZER_ACCESS_CODE` | старый access-code secret удалить только после успешного email OTP UAT |
+| Existing secrets | public: `TURNSTILE_SECRET`, `ATTEMPT_TOKEN_SECRET`; organizer remote пока содержит `AUTH_TOKEN_SECRET`, `RESEND_API_KEY`, старый `ORGANIZER_ACCESS_CODE` | перед новым deploy добавить `BREVO_API_KEY`; старые secrets удалить только после успешного OTP UAT |
 | Owner identity | `user_staging_owner` / `org_vecta` | Обычный Organizer; подтверждённый email привязан только в remote D1, без PII в Git |
 
 Public staging: <https://vecta-staging-public.alimbekov1234567890.workers.dev>
@@ -41,7 +41,7 @@ Production Worker deploy намеренно не выполняется до и�
 - Organizer Worker использует `AUTH_MODE=session`.
 - Текущий remote вход: email → Turnstile → одноразовый код → server-side D1 session → HttpOnly cookie.
 - Logout отзывает только Vecta session и не разлогинивает пользователя из Cloudflare dashboard.
-- Email OTP UI/API восстановлены локально как целевая production identity. Resend выбран, потому что Cloudflare Email Sending для произвольных адресатов требует Workers Paid.
+- Email OTP UI/API используют provider adapter. После диагностированного `403` Resend sandbox staging config переключён на Brevo; Worker ждёт принятия письма и показывает ошибку вместо ложного шага ввода кода.
 - Добавлены environment-specific Vite build scripts. Environment выбирается до сборки; `wrangler deploy --env ...` после обычного build запрещён, потому что redirected output уже flattened.
 
 Подробности: `docs/ORGANIZER_AUTH_RUNBOOK.md`.
@@ -49,12 +49,12 @@ Production Worker deploy намеренно не выполняется до и�
 ## Проверено локально
 
 - TypeScript typecheck проходит.
-- 32 unit tests и 34 Worker/D1 tests проходят.
+- 32 unit tests и 35 Worker/D1 tests проходят.
 - Migration `0005_organizer_email_auth.sql` применяется в isolated D1 test runtime.
-- Worker tests подтверждают email request → Resend adapter → одноразовый OTP → provision личного workspace → HttpOnly cookie → authenticated session → logout/revocation, max attempts и безопасную очистку при delivery failure.
+- Worker tests подтверждают Brevo и Resend adapters, email request → одноразовый OTP → provision личного workspace → HttpOnly cookie → authenticated session → logout/revocation, max attempts и безопасную очистку при delivery failure.
 - Plaintext OTP не записывается в D1, raw session token заменён HMAC digest; проверка выполняется Web Crypto.
 - Cookie-auth mutations отклоняют cross-site request context.
-- `build:staging:organizer` формирует `vecta-staging-organizer` с staging D1, session auth, Resend vars и обоими rate-limit bindings; актуальная сборка deployed.
+- `build:staging:organizer` формирует `vecta-staging-organizer` с staging D1, session auth, Brevo vars и обоими rate-limit bindings; эта новая конфигурация ещё не deployed.
 - OTP интерфейс состоит из шести доступных ячеек, принимает вставку полного кода и поддерживает клавиатурную навигацию; подсказка про папку «Спам» показана только после запроса письма.
 - После UI deploy remote smoke подтверждает health/login `200` и наличие новой OTP-разметки/CSS в опубликованных assets.
 - Платформенные Super Admin endpoints и UI удалены; открытая регистрация создаёт отдельный workspace и organizer membership после первого подтверждённого OTP.
@@ -67,10 +67,11 @@ Production Worker deploy намеренно не выполняется до и�
 
 ## Следующий обязательный gate
 
-1. Выполнить owner UAT входа по письму из `docs/ORGANIZER_AUTH_RUNBOOK.md`.
-2. После подтверждённого входа удалить старый `ORGANIZER_ACCESS_CODE` и повторить session/logout smoke.
-3. Пройти негативные/позитивные auth-сценарии и проверить roles/tenant boundary.
-4. Интерактивно установить production secrets, добавить production hostnames в Turnstile, снять Core Web Vitals и выполнить production deploy/smoke.
+1. Подтвердить sender в Brevo, интерактивно установить `BREVO_API_KEY`, собрать и deploy Organizer staging.
+2. Выполнить owner UAT входа по письму из `docs/ORGANIZER_AUTH_RUNBOOK.md`.
+3. После подтверждённого входа удалить старый `ORGANIZER_ACCESS_CODE` и повторить session/logout smoke.
+4. Пройти негативные/позитивные auth-сценарии и проверить roles/tenant boundary.
+5. Интерактивно установить production secrets, добавить production hostnames в Turnstile, снять Core Web Vitals и выполнить production deploy/smoke.
 
 ## Rollback
 

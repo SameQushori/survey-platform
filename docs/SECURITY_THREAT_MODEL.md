@@ -1,6 +1,6 @@
 # Vecta — Security Threat Model
 
-Последнее обновление: 2026-09-01
+Последнее обновление: 2026-09-06
 Область: React SPA, Cloudflare Worker API, D1, organizer email OTP/session flow, Turnstile и публичный participant flow.
 
 ## Активы и границы доверия
@@ -17,7 +17,7 @@
 | --- | --- | --- | --- |
 | Подмена Organizer identity или роли | Доступ к чужой организации | Высокоэнтропийный session token хранится только в `Secure; HttpOnly; SameSite=Lax` cookie, D1 содержит HMAC digest; права разрешаются из D1 | Проверить expiry и logout/revocation на staging |
 | Перебор organizer OTP | Захват индивидуальной identity | OTP 6 цифр / 10 минут / один вход, максимум 5 неудачных проверок, rate limit по IP, Turnstile action/hostname; D1 хранит HMAC digest | Проверить реальные лимиты и доставку на staging |
-| Массовая регистрация / email bombing | Расход квоты и нежелательные письма | Turnstile Free, раздельные rate limits по IP и HMAC-digest email, одно активное challenge на user; логи не содержат email | Настроить verified sender и проверить реальные лимиты на staging |
+| Массовая регистрация / email bombing | Расход квоты и нежелательные письма | Turnstile Free, раздельные rate limits по IP и HMAC-digest email, одно активное challenge на user; логи не содержат email | Подтвердить Brevo sender и проверить реальные лимиты на staging |
 | IDOR / tenant escape | Чтение или изменение чужих тестов и результатов | Organization ID не принимается как источник полномочий; ownership выводится server-side, каждый route проходит membership check | Повторить cross-tenant UAT на staging |
 | Утечка answer key | Компрометация теста | Публичный resolve не отдаёт вопросы; participant DTO не содержит answer key, `isCorrect` или внутренних points | Контролировать новые DTO при будущих изменениях |
 | Кража кода или invitation token из БД | Несанкционированная попытка | В D1 сохраняются только HMAC digests; plaintext возвращается один раз; controlled invitation одноразовый | Защитить Worker secrets и журналы Cloudflare |
@@ -42,7 +42,7 @@
 
 ## Не считается закрытым до Phase 11
 
-- Organizer Turnstile hostname настроен; Resend secret, sender domain и owner email ещё должны быть настроены на staging.
+- Organizer Turnstile hostname настроен; Brevo sender нужно подтвердить, `BREVO_API_KEY` установить интерактивно и развернуть новую staging version.
 - Staging UAT должен проверить email OTP, cookies, redirects, hostname binding, rate-limit поведение, anti-enumeration, observability и rollback.
-- Production заблокирован до успешного email OTP UAT и подтверждённого sending domain.
+- Production заблокирован до успешного email OTP UAT и подтверждённого sender; собственный sending domain остаётся желательным deliverability-gate перед публичным трафиком.
 - Метрики Core Web Vitals снимаются на staging с production-like network/cache; локальный bundle gate не заменяет этот замер.

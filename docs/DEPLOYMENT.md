@@ -1,6 +1,6 @@
 # Vecta Deployment and Rollback Runbook
 
-Обновлено: 2026-09-05
+Обновлено: 2026-09-06
 
 ## Контуры
 
@@ -56,10 +56,11 @@ npm.cmd exec wrangler -- secret put ATTEMPT_TOKEN_SECRET --config wrangler.jsonc
 npm.cmd exec wrangler -- secret put TURNSTILE_SECRET --config wrangler.jsonc --env production-organizer
 npm.cmd exec wrangler -- secret put ATTEMPT_TOKEN_SECRET --config wrangler.jsonc --env production-organizer
 npm.cmd exec wrangler -- secret put AUTH_TOKEN_SECRET --config wrangler.jsonc --env production-organizer
-npm.cmd exec wrangler -- secret put RESEND_API_KEY --config wrangler.jsonc --env production-organizer
+npm.cmd exec wrangler -- secret put AUTH_EMAIL_FROM --config wrangler.jsonc --env production-organizer
+npm.cmd exec wrangler -- secret put BREVO_API_KEY --config wrangler.jsonc --env production-organizer
 ```
 
-`ATTEMPT_TOKEN_SECRET` и `AUTH_TOKEN_SECRET` — независимые случайные значения минимум 32 bytes. Production sender должен принадлежать verified Resend domain. Пока домена нет, `onboarding@resend.dev` пригоден только для входа владельца Resend account и не является публичной email-конфигурацией.
+`ATTEMPT_TOKEN_SECRET` и `AUTH_TOKEN_SECRET` — независимые случайные значения минимум 32 bytes. Staging использует Brevo и подтверждённый Gmail sender без собственного домена. После успешного staging UAT переключить `production-organizer` в `wrangler.jsonc` на `AUTH_EMAIL_PROVIDER=brevo`, указать тот же подтверждённый sender, выполнить `npm.cmd run cf:typegen` и только затем задавать production `BREVO_API_KEY`/деплоить. Resend остаётся rollback-адаптером, но `onboarding@resend.dev` не подходит для открытой регистрации.
 
 ## Сборка и deploy
 
@@ -105,5 +106,5 @@ D1 migrations являются forward-only. Текущие migrations additive/
 
 - Workers Observability включён с sampling rate `1`.
 - Логи auth не должны содержать email, OTP, raw tokens или provider body.
-- Проверять `organizer_login_email_failed`, HTTP 5xx/429 и D1 errors по request ID.
+- Проверять `organizer_login_email_failed`, его поле `provider`, HTTP 5xx/429 и D1 errors по request ID. Email, OTP и provider response body в логах быть не должно.
 - После стабилизации снизить sampling только отдельным осознанным решением.

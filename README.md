@@ -24,7 +24,7 @@ Vecta — русскоязычная assessment-first платформа для 
 - React 19, TypeScript strict, React Router, dnd-kit, Manrope и Phosphor Icons.
 - Cloudflare Worker + Static Assets; `/api/*` всегда исполняется сервером.
 - Cloudflare D1 с последовательными миграциями и immutable publication snapshots.
-- Бесплатный Cloudflare Turnstile, Cloudflare Rate Limiting, HMAC/JOSE, HttpOnly sessions и Resend email OTP.
+- Бесплатный Cloudflare Turnstile, Cloudflare Rate Limiting, HMAC/JOSE, HttpOnly sessions и provider-agnostic email OTP (Brevo/Resend).
 - Vitest для unit-тестов и Cloudflare Vitest plugin для Worker/D1 integration-тестов.
 
 ```text
@@ -33,7 +33,7 @@ Browser ── Static Assets ── React SPA
    └── /api/* ── Cloudflare Worker ── D1
                     │
                     ├── Turnstile / Rate Limiting
-                    └── Resend (organizer OTP)
+                    └── Brevo / Resend (organizer OTP)
 ```
 
 Основные каталоги:
