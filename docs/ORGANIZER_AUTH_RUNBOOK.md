@@ -1,7 +1,7 @@
 # Organizer Authentication Runbook
 
 Обновлено: 2026-09-07
-Статус: Clerk Development подключён; код готов к staging deploy и UAT. Production Clerk требует собственного домена.
+Статус: Clerk Development подключён и опубликован на staging; ручной UAT не завершён. Production Clerk требует собственного домена.
 
 ## Архитектура
 
@@ -47,7 +47,7 @@ npm.cmd exec wrangler -- secret put CLERK_SECRET_KEY --config wrangler.jsonc --e
 npm.cmd exec wrangler -- secret put CLERK_PUBLISHABLE_KEY --config wrangler.jsonc --env staging-organizer
 ```
 
-Перед сборкой staging в локальном `.env.local` должен находиться development `VITE_CLERK_PUBLISHABLE_KEY`. Production собирается только с ключом Clerk Production instance.
+Перед сборкой staging в локальном `.env.local` должен находиться development `VITE_CLERK_PUBLISHABLE_KEY`. Production собирается только с ключом Clerk Production instance. Build script декодирует Frontend API origin из ключа и создаёт точный CSP из `scripts/cloudflare-headers.template`; обычный `vite build` нельзя деплоить вручную в обход environment-specific скрипта.
 
 ## Staging UAT
 

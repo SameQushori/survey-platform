@@ -1,7 +1,7 @@
 # Phase 11 — Cloudflare Staging
 
 Обновлено: 2026-09-07
-Статус: Clerk-код и staging deploy завершены; ручной auth UAT ещё не зафиксирован.
+Статус: Clerk-код, staging deploy и CSP/responsive smoke завершены; ручной auth UAT ещё не зафиксирован.
 
 ## Ресурсы
 
@@ -22,25 +22,29 @@ Cloudflare Access и собственная email-доставка больше 
 ## Локальные доказательства
 
 - TypeScript и ESLint проходят.
-- 32 unit tests проходят.
-- 27 Worker/D1 integration tests проходят.
+- 36 unit tests проходят, включая запрет смешивания Clerk Development/Production keys.
+- 28 Worker/D1 integration tests проходят.
 - Production build проходит.
 - Визуально проверен `/login`: фирменная модалка, Google, email, открытая регистрация и центрирование.
 - Provisioning test подтверждает отсутствие дубликата workspace при повторном вызове.
+- Cloudflare build декодирует точный Clerk Frontend API origin из publishable key и генерирует Static Assets CSP; production build с `pk_test_*` завершается ошибкой до сборки.
 
 ## Опубликованные версии и smoke
 
-- Public: `4c7cf89f-4a53-4236-a250-6a9d01dd64d7`.
-- Organizer: `cc9a1b6e-749b-4c81-b9d2-b92c87e4410d`.
+- Public: `56117351-0f3d-4744-b9dc-137b17fc04b2`.
+- Organizer: `e1c368f7-451d-47c9-94f0-aea51afe2a58`.
 - `CLERK_SECRET_KEY` и `CLERK_PUBLISHABLE_KEY` установлены как staging Organizer secrets без вывода значений.
 - Оба health endpoint возвращают `200` и request ID.
 - Organizer `/login` возвращает `200`; anonymous `/api/v1/session` возвращает `401`.
 - Remote UI содержит Google, email и открытую регистрацию.
+- Оба hostname отдают CSP с точным Clerk Development FAPI, `*.protect.clerk.com` и без `unsafe-inline` в `script-src`.
+- До исправления CSP браузер воспроизводимо блокировал `clerk-js`; после deploy новая загрузка завершилась ожидаемым Development-key warning без новой `failed_to_load_clerk_js` ошибки.
+- На 390×844 и 1280×720 нет горизонтального overflow; auth dialog остаётся в viewport, интерактивные элементы имеют accessible names.
 
 ## Незавершённые внешние действия
 
 1. Пройти email/Google/logout/cross-account UAT из `docs/ORGANIZER_AUTH_RUNBOOK.md`.
-2. Снять Core Web Vitals.
+2. Снять Core Web Vitals после подключения Chrome DevTools MCP; без trace численные LCP/CLS не фиксируются.
 
 Production не входит в этот проход: без собственного домена Clerk Production instance не готов. Development keys запрещено переносить в production.
 

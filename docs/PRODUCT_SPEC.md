@@ -159,7 +159,7 @@ Vecta — assessment-first веб-платформа для создания к�
 
 ## 13. Auth gate
 
-Production-вход организаторов — встроенный email One-time Code. Vecta не хранит пароли; Worker проверяет непросроченную server-side session cookie и затем роль/membership в D1. Изолированная локальная test identity допустима только на localhost/`.test` и не является production fallback.
+Вход и открытая регистрация организаторов обслуживаются Clerk: Google или шестизначный email-код в кастомном интерфейсе Vecta. Vecta не хранит пароли и коды; Worker проверяет Clerk session token, точный `authorizedParties` origin и затем membership в D1. При первом подтверждённом входе создаётся личное рабочее пространство с ролью `organizer`. Изолированная локальная test identity допустима только на localhost/`.test` и не является production fallback. Staging использует Clerk Development keys, а production-сборка принимает только Clerk Production keys.
 
 ## 14. Definition of Done MVP
 

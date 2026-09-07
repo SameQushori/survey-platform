@@ -26,7 +26,7 @@
 | Обход дедлайна / повтор submit | Изменение результата | Deadline и status проверяет Worker; ответы валидируются server-side; submit идемпотентен | Наблюдать аномальные повторы |
 | Боты и подбор participant code | Нагрузка и подбор доступа | Turnstile Siteverify с hostname/action, rate limit публичного resolve, bounded payload | Проверить production widget/rules |
 | CSV formula injection | Выполнение формул у организатора | Опасные префиксы нейтрализуются; export требует membership; лимит 10 000 строк | Не ослаблять sanitizer |
-| Stored/DOM XSS | Кража сессии, изменение UI | React escaping, отсутствие `dangerouslySetInnerHTML`, API CSP `default-src 'none'`, запрет embedding | Добавить CSP для Static Assets при production-домене с разрешёнными Clerk origins |
+| Stored/DOM XSS | Кража сессии, изменение UI | React escaping, отсутствие `dangerouslySetInnerHTML`, API CSP `default-src 'none'`, запрет embedding; Static Assets CSP генерируется с точным Clerk FAPI из publishable key | Проверить сгенерированный CSP повторно для production key/domain |
 | CSRF / cross-origin mutations | Изменение данных | Bearer Clerk token, `X-Requested-With`, Fetch Metadata/Origin checks; participant mutations требуют отдельный bearer token | Проверить staging cross-site negative cases |
 | Supply chain | Выполнение вредоносного кода | Lockfile, audit, typecheck, tests, build и release scan в CI | Контролировать обновления Clerk/Workers SDK |
 
@@ -43,5 +43,5 @@
 
 - Выполнить Clerk staging UAT: email, Google, logout, cross-account isolation, invalid token и observability.
 - Подключить собственный домен, создать Clerk Production instance и настроить production OAuth credentials/DNS.
-- Добавить production Static Assets CSP после появления финальных Clerk frontend/API origins.
+- Проверить автоматически сгенерированный Static Assets CSP с финальным Clerk Production key/domain.
 - Снять Core Web Vitals на staging с production-like network/cache.

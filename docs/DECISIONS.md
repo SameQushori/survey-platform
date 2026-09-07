@@ -7,6 +7,8 @@
 - Provisioning: любой подтверждённый Clerk user при первом запросе получает отдельную D1-организацию и membership `organizer`; общей Super Admin-роли и allow-list нет.
 - Authorization: Clerk подтверждает identity, а D1 остаётся источником истины для membership и tenant boundary. `authorizedParties` ограничен точным Organizer origin.
 - Abuse protection: organizer bot protection и лимиты обслуживает Clerk. Cloudflare Turnstile и Rate Limiting остаются в публичном participant flow.
+- CSP: Cloudflare Static Assets header генерируется при environment-specific build с точным Frontend API origin, декодированным из Clerk publishable key; Clerk protection origins добавлены по официальным требованиям.
+- Release guard: staging принимает только `pk_test_*`, production — только `pk_live_*`; обычный `vite build` не является deploy artifact.
 - Production gate: development instance допустим для staging; Clerk Production и production deploy запрещены до подключения собственного домена.
 - Supersedes: решения 2026-09-05/06 о собственном OTP, Brevo/Resend sender и organizer Turnstile больше не определяют runtime; они сохранены ниже как история.
 

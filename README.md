@@ -85,7 +85,7 @@ npm run deploy:staging:public
 npm run deploy:staging:organizer
 ```
 
-Каждая deploy-команда сначала собирает правильный environment, затем публикует созданный `dist/vecta/wrangler.json`. Безопасная проверка без публикации: добавить `-- --dry-run`.
+Каждая deploy-команда сначала собирает правильный environment, проверяет соответствие Clerk key (`pk_test_*` для staging, `pk_live_*` для production), генерирует Static Assets CSP с точным Clerk Frontend API origin и затем публикует `dist/vecta/wrangler.json`. Обычный `vite build` не является deploy artifact. Безопасная проверка без публикации: добавить `-- --dry-run`.
 
 Production D1 и конфигурация подготовлены отдельно. Пошаговая настройка secrets, Turnstile hostnames, migrations, smoke и rollback находится в [Deployment Runbook](docs/DEPLOYMENT.md). Состояние внешних release-gates — в [PROJECT_STATUS.md](PROJECT_STATUS.md).
 

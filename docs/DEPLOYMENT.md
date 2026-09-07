@@ -9,7 +9,7 @@
 | Staging | `vecta-staging-public` | `vecta-staging-organizer` | `vecta-staging` | Clerk Development |
 | Production | `vecta-public` | `vecta-organizer` | `vecta-production` | Clerk Production после подключения домена |
 
-Staging и production не разделяют D1. Bindings хранятся в `wrangler.jsonc`, secrets — только в Cloudflare.
+Staging и production используют разные D1. Bindings хранятся в `wrangler.jsonc`, secrets — только в Cloudflare.
 
 ## Предпроверки
 
@@ -61,7 +61,7 @@ npm.cmd run deploy:staging:public
 npm.cmd run deploy:staging:organizer
 ```
 
-Каждая команда сначала собирает конкретный environment. Production-команды разрешены только после создания Clerk Production instance, настройки собственного домена и установки production keys.
+Каждая команда сначала собирает конкретный environment. Build guard принимает `pk_test_*` только для staging и `pk_live_*` только для production, поэтому development publishable key не может случайно попасть в production bundle. Скрипт декодирует Frontend API origin из publishable key и генерирует для него точный Static Assets CSP из `scripts/cloudflare-headers.template`; ручной deploy результата обычного `vite build` запрещён. Production-команды разрешены только после создания Clerk Production instance, настройки собственного домена и установки production keys.
 
 ## Smoke после deploy
 

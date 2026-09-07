@@ -34,10 +34,10 @@ Organizer authentication переводится на Clerk:
 
 - `npm run typecheck` — проходит.
 - `npm run lint` — проходит.
-- Unit tests — 32/32 проходят.
-- Worker/D1 integration tests — 27/27 проходят, включая idempotent Clerk workspace provisioning.
+- Unit tests — 36/36 проходят, включая Clerk environment/build guard.
+- Worker/D1 integration tests — 28/28 проходят, включая idempotent Clerk workspace provisioning.
 - `npm run build` — проходит.
-- Полный `npm run quality` нужно повторить после финального обновления документов и deployment.
+- Полный `npm run quality` — проходит; release scan проверил 97 repository и 73 build-файла, `npm audit` нашёл 0 уязвимостей.
 
 ## Cloudflare inventory
 
@@ -46,9 +46,11 @@ Organizer authentication переводится на Clerk:
 - D1: `vecta-staging`, ID `fcbe1d68-f3ec-4d9b-966e-202a288fe8fc`, migrations `0001`–`0006`.
 - Public: <https://vecta-staging-public.alimbekov1234567890.workers.dev>.
 - Organizer: <https://vecta-staging-organizer.alimbekov1234567890.workers.dev>.
-- Public version: `4c7cf89f-4a53-4236-a250-6a9d01dd64d7`.
-- Organizer Clerk version: `cc9a1b6e-749b-4c81-b9d2-b92c87e4410d`.
-- Remote smoke: оба health `200` с request ID, Organizer `/login` `200`, anonymous `/api/v1/session` `401`, опубликованная auth-модалка содержит Google и email flow.
+- Public version: `56117351-0f3d-4744-b9dc-137b17fc04b2`.
+- Organizer Clerk version: `e1c368f7-451d-47c9-94f0-aea51afe2a58`.
+- Remote smoke: оба health `200` с request ID, Organizer `/login` `200`, anonymous и invalid-token `/api/v1/session` получают `401`.
+- Исправлен блокирующий Clerk CSP: оба Worker отдают точный Frontend API origin, Clerk protection origins и не разрешают `unsafe-inline` scripts; после deploy `clerk-js` загрузился без новой ошибки.
+- Responsive/accessibility smoke `/login`: 390×844 и 1280×720 без горизонтального overflow, диалог остаётся в viewport, у полей и кнопок есть accessible names.
 
 ### Production
 
@@ -60,11 +62,10 @@ Organizer authentication переводится на Clerk:
 
 1. Выполнить Clerk staging UAT по `docs/ORGANIZER_AUTH_RUNBOOK.md`: email, Google, logout, новый аккаунт и cross-account isolation.
 2. Исправить только подтверждённые UAT-дефекты; новые фичи не добавлять.
-3. Снять responsive/accessibility/performance smoke.
-4. Закоммитить, отправить ветку, дождаться CI и обновить PR.
-5. Отдельно подключить домен, Clerk Production instance и production keys.
-6. После успешного production dry-run/deploy выполнить smoke и rollback readiness check.
-7. Merge PR — только после явного решения владельца.
+3. Снять Core Web Vitals через Chrome DevTools MCP; responsive/accessibility smoke уже пройден.
+4. Отдельно подключить домен, Clerk Production instance и production keys.
+5. После успешного production dry-run/deploy выполнить smoke и rollback readiness check.
+6. Merge PR — только после явного решения владельца.
 
 ## Что проверить вручную после staging deploy
 
@@ -80,8 +81,8 @@ Organizer authentication переводится на Clerk:
 ## Фазы
 
 - [x] Phase 0–10 — product rules, repository, domain/API/D1, design, Cloudflare foundation, authorization, authoring, participant, results, hardening и Firebase retirement.
-- [ ] Phase 11 — Clerk staging deployed; ручной auth UAT и performance smoke остаются.
-- [ ] Phase 12 — финальный commit/push/CI и release handoff; профильный README уже обновлён, Vecta стоит первой в Featured Projects.
+- [ ] Phase 11 — Clerk staging deployed, CSP исправлен и responsive/accessibility smoke пройден; ручной auth UAT и Core Web Vitals остаются.
+- [x] Phase 12 — release handoff, PR и профильный README готовы; Vecta стоит первой в Featured Projects. Новые исправления отправляются в тот же PR.
 
 ## Правила продолжения
 
