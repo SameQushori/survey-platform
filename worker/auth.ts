@@ -1,6 +1,15 @@
+import { createClerkClient } from "@clerk/backend";
+
 export interface AuthenticatedIdentity {
   subject: string;
   email: string | null;
+  displayName: string | null;
+  providerUserId: string | null;
+}
+
+export interface ClerkOrganizerProfile {
+  email: string;
+  displayName: string;
 }
 
 export class IdentityError extends Error {
@@ -13,16 +22,9 @@ export class IdentityError extends Error {
   }
 }
 
-interface SessionUserRow {
-  auth_subject: string;
-  email: string | null;
-}
-
 const localSubjects = new Map([
   ["local:organizer", "organizer@vecta.local"],
 ]);
-
-export const organizerSessionCookie = "__Host-vecta_session";
 
 function isLocalHostname(hostname: string): boolean {
   return hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".test");
@@ -40,17 +42,7 @@ function localIdentity(request: Request, env: Env): AuthenticatedIdentity {
     throw new IdentityError(401, "Local development identity is missing or invalid");
   }
 
-  return { subject, email };
-}
-
-function cookieValue(request: Request, name: string): string {
-  const cookies = request.headers.get("cookie") ?? "";
-  for (const part of cookies.split(";")) {
-    const separator = part.indexOf("=");
-    if (separator < 0) continue;
-    if (part.slice(0, separator).trim() === name) return part.slice(separator + 1).trim();
-  }
-  return "";
+  return { subject, email, displayName: null, providerUserId: null };
 }
 
 function assertSameOriginMutation(request: Request): void {
@@ -70,55 +62,77 @@ function assertSameOriginMutation(request: Request): void {
   }
 }
 
-async function authSecretKey(env: Env): Promise<CryptoKey> {
-  const encoder = new TextEncoder();
-  if (!env.AUTH_TOKEN_SECRET) throw new IdentityError(500, "Authentication secret is not configured");
-  return crypto.subtle.importKey(
-    "raw",
-    encoder.encode(env.AUTH_TOKEN_SECRET),
-    { hash: "SHA-256", name: "HMAC" },
-    false,
-    ["sign", "verify"],
-  );
-}
+function clerkConfiguration(env: Env): {
+  authorizedParties: string[];
+  publishableKey: string;
+  secretKey: string;
+} {
+  const publishableKey = env.CLERK_PUBLISHABLE_KEY?.trim() ?? "";
+  const secretKey = env.CLERK_SECRET_KEY?.trim() ?? "";
+  const authorizedParties = (env.CLERK_AUTHORIZED_PARTIES ?? "")
+    .split(",")
+    .map((party) => party.trim())
+    .filter(Boolean);
 
-export async function authSecretDigest(env: Env, purpose: string, value: string): Promise<string> {
-  const key = await authSecretKey(env);
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${purpose}\0${value}`));
-  return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
-export async function verifyAuthSecretDigest(env: Env, purpose: string, value: string, digest: string): Promise<boolean> {
-  const normalized = /^[0-9a-f]{64}$/.test(digest) ? digest : "0".repeat(64);
-  const signature = new Uint8Array(normalized.match(/.{2}/g)?.map((byte) => Number.parseInt(byte, 16)) ?? []);
-  const key = await authSecretKey(env);
-  return crypto.subtle.verify("HMAC", key, signature, new TextEncoder().encode(`${purpose}\0${value}`));
-}
-
-async function sessionIdentity(request: Request, env: Env): Promise<AuthenticatedIdentity> {
-  assertSameOriginMutation(request);
-  const token = cookieValue(request, organizerSessionCookie);
-  if (!/^[A-Za-z0-9_-]{43}$/.test(token)) {
-    throw new IdentityError(401, "Organizer session is missing");
+  if (!publishableKey || !secretKey || authorizedParties.length === 0) {
+    throw new IdentityError(500, "Clerk authentication is not configured");
   }
 
-  const tokenDigest = await authSecretDigest(env, "session", token);
-  const row = await env.DB.prepare(
-    `SELECT u.auth_subject, u.email
-     FROM organizer_auth_sessions s
-     JOIN users u ON u.id = s.user_id
-     WHERE s.token_digest = ?1
-       AND s.revoked_at IS NULL
-       AND s.expires_at > ?2
-       AND u.status = 'active'`,
-  ).bind(tokenDigest, Date.now()).first<SessionUserRow>();
+  return { authorizedParties, publishableKey, secretKey };
+}
 
-  if (!row) throw new IdentityError(401, "Organizer session is invalid or expired");
-  return { subject: row.auth_subject, email: row.email?.trim().toLowerCase() ?? null };
+function clerkClient(env: Env) {
+  const { publishableKey, secretKey } = clerkConfiguration(env);
+  return createClerkClient({ publishableKey, secretKey });
+}
+
+async function clerkIdentity(request: Request, env: Env): Promise<AuthenticatedIdentity> {
+  assertSameOriginMutation(request);
+  const { authorizedParties } = clerkConfiguration(env);
+
+  let requestState;
+  try {
+    requestState = await clerkClient(env).authenticateRequest(request, { authorizedParties });
+  } catch {
+    throw new IdentityError(500, "Clerk session verification is unavailable");
+  }
+
+  if (!requestState.isAuthenticated) {
+    throw new IdentityError(401, "Clerk session is missing or invalid");
+  }
+
+  const { userId } = requestState.toAuth();
+  if (!userId) throw new IdentityError(401, "Clerk user is missing from the session");
+
+  return {
+    subject: `clerk:${userId}`,
+    email: null,
+    displayName: null,
+    providerUserId: userId,
+  };
+}
+
+export async function loadClerkOrganizerProfile(env: Env, userId: string): Promise<ClerkOrganizerProfile> {
+  let user;
+  try {
+    user = await clerkClient(env).users.getUser(userId);
+  } catch {
+    throw new IdentityError(500, "Clerk user profile is unavailable");
+  }
+
+  const primaryEmail = user.emailAddresses.find((address) => address.id === user.primaryEmailAddressId)
+    ?? user.emailAddresses[0];
+  const email = primaryEmail?.emailAddress.trim().toLowerCase() ?? "";
+  if (!email) throw new IdentityError(500, "Clerk user does not have an email address");
+
+  const displayName = [user.firstName, user.lastName].filter(Boolean).join(" ").trim()
+    || email.split("@")[0]
+    || "Организатор";
+  return { email, displayName };
 }
 
 export async function authenticateRequest(request: Request, env: Env): Promise<AuthenticatedIdentity> {
   if (env.AUTH_MODE === "local") return localIdentity(request, env);
-  if (env.AUTH_MODE === "session") return sessionIdentity(request, env);
+  if (env.AUTH_MODE === "clerk") return clerkIdentity(request, env);
   throw new IdentityError(500, "Authentication mode is not configured");
 }

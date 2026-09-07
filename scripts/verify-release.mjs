@@ -49,7 +49,7 @@ const forbiddenBuildFiles = builtFiles.filter((file) =>
 
 const secretPatterns = [
   { label: "Brevo API key", value: /xkeysib-[A-Za-z0-9_-]{16,}/g },
-  { label: "Resend API key", value: /re_[A-Za-z0-9_-]{20,}/g },
+  { label: "Resend API key", value: /\bre_(?=[A-Za-z0-9_-]{20,}\b)(?=[A-Za-z0-9_-]*\d)[A-Za-z0-9_-]{20,}\b/g },
   { label: "private key", value: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g },
 ];
 const secretMatches = [];

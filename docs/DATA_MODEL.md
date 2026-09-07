@@ -27,8 +27,8 @@ organizations ──< memberships >── users
                                                   │
                                                   └── results
 
-users ──< organizer_auth_challenges
-  └────< organizer_auth_sessions
+users ──< organizer_auth_challenges (legacy/inactive)
+  └────< organizer_auth_sessions (legacy/inactive)
 
 organizations/users ──< audit_log
 idempotency_keys — scoped технический ledger
@@ -74,12 +74,10 @@ Zod проверяет payload до SQL. SQL использует только p
 
 ## Дополнение Phase 11
 
-- `0005_organizer_email_auth.sql` добавляет одноразовые organizer challenges и revocable server-side sessions.
-- Challenge хранит только HMAC digest кода, expiry, state и bounded failed-attempt counter.
-- Session хранит только HMAC digest высокоэнтропийного cookie token, expiry и revocation timestamp.
-- Raw OTP и session token не записываются в D1; ротация `AUTH_TOKEN_SECRET` инвалидирует оба класса credentials.
+- `0005_organizer_email_auth.sql` исторически добавила organizer challenges/sessions. После перехода на Clerk эти таблицы не используются runtime, но сохраняются из-за forward-only migrations.
 - `0006_open_organizer_registration.sql` обнуляет legacy `users.platform_role`: колонка остаётся только для совместимого forward-only перехода и не используется приложением.
-- При первом подтверждении нового email Worker создаёт пользователя, личную организацию и organizer membership; отказ доставки удаляет provisional user без membership/session.
+- Clerk user связывается с D1 через уникальный `users.auth_subject = clerk:<user_id>`.
+- При первом валидном Clerk session Worker одним D1 batch создаёт user, личную организацию, organizer membership и audit event; повторный запрос не создаёт дубликат.
 
 ## Platform references
 

@@ -5,7 +5,7 @@
 | Capability | Anonymous | Participant token | Organizer member |
 |---|---:|---:|---:|
 | Просмотреть landing | Allow | Allow | Allow |
-| Зарегистрироваться/войти по email OTP | Allow, Turnstile + rate limits | Allow как anonymous flow | Allow |
+| Зарегистрироваться/войти через Clerk (Google/email) | Allow через Clerk | Allow как anonymous flow | Allow |
 | Resolve открытый код | Allow, rate limited | Allow, rate limited | Allow |
 | Создать Attempt | Allow, Turnstile + rate limit | Deny | Allow как participant flow |
 | Читать/сохранять свою active Attempt | Deny | Allow только token-bound attempt | Deny через organizer route |
@@ -21,7 +21,7 @@
 
 ## Обязательные server-side predicates
 
-- При первом подтверждённом email Worker создаёт пользователя, личную организацию и membership `organizer`; клиент не выбирает роль или organization ID.
+- При первом валидном Clerk session Worker создаёт пользователя, личную организацию и membership `organizer`; клиент не выбирает роль или organization ID.
 - Organizer resource query всегда содержит `organization_id` из подтверждённого membership context.
 - `404`, а не `403`, используется для чужого tenant resource, чтобы не подтверждать его существование.
 - Attempt token содержит минимальные claims и сверяется с `attempts.token_version`, status и deadline.

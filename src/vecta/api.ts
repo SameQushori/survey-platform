@@ -11,8 +11,6 @@ import type {
   DistributionDTO,
   InvitationDTO,
   OrganizerSessionDTO,
-  OrganizerLoginChallengeDTO,
-  OrganizerLoginVerificationDTO,
   OrganizerAttemptDetailDTO,
   OrganizerAttemptsPageDTO,
   PublishAssessmentResponse,
@@ -28,6 +26,13 @@ import type {
 import { organizerLoginUrl } from './organizerLogin';
 
 export type LocalIdentityRole = 'organizer';
+type OrganizerTokenProvider = () => Promise<string | null>;
+
+let organizerTokenProvider: OrganizerTokenProvider | null = null;
+
+export function configureOrganizerTokenProvider(provider: OrganizerTokenProvider | null): void {
+  organizerTokenProvider = provider;
+}
 
 const localIdentities = {
   organizer: {
@@ -67,6 +72,9 @@ async function authorizedFetch(path: string, role: LocalIdentityRole, init: Requ
     const identity = localIdentities[role];
     headers.set('X-Vecta-Local-Subject', identity.subject);
     headers.set('X-Vecta-Local-Email', identity.email);
+  } else if (organizerTokenProvider) {
+    const token = await organizerTokenProvider();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
   }
 
   return fetch(path, {
@@ -90,22 +98,6 @@ async function publicRequest<T>(path: string, init: RequestInit = {}): Promise<T
 
 export function getOrganizerSession(role: LocalIdentityRole): Promise<OrganizerSessionDTO> {
   return authorizedRequest('/api/v1/session', role);
-}
-
-export function requestOrganizerLoginCode(email: string, turnstileToken: string): Promise<OrganizerLoginChallengeDTO> {
-  return publicRequest('/api/v1/auth/request-code', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, turnstileToken }),
-  });
-}
-
-export function verifyOrganizerLoginCode(challengeId: string, code: string): Promise<OrganizerLoginVerificationDTO> {
-  return publicRequest('/api/v1/auth/verify-code', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ challengeId, code }),
-  });
 }
 
 export function getAssessments(organizationId: string): Promise<AssessmentListItemDTO[]> {
@@ -262,16 +254,4 @@ export function getOrganizerLoginUrl(): string {
 
 export function startOrganizerLogin(): void {
   window.location.assign(getOrganizerLoginUrl());
-}
-
-export async function logoutOrganizer(): Promise<void> {
-  if (import.meta.env.DEV) {
-    window.location.assign('/');
-    return;
-  }
-  try {
-    await publicRequest('/api/v1/auth/logout', { method: 'POST' });
-  } finally {
-    window.location.assign('/');
-  }
 }

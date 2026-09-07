@@ -255,6 +255,15 @@ h1, h2, h3, p { margin: 0; }
 .organizer-login-dialog { width: min(500px,calc(100vw - 32px)); }
 .organizer-login-form { width: 100%; margin-top: 8px; display: grid; text-align: left; }
 .organizer-login-form .button { margin-top: 8px; }
+.button-google { border: 1px solid var(--line); background: #fff; color: var(--ink); box-shadow: 0 3px 10px rgba(39,72,116,.06); }
+.button-google:hover { border-color: var(--blue-300); background: var(--blue-50); }
+.button-google svg { width: 19px; height: 19px; color: #4285f4; }
+.login-divider { height: 34px; display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 10px; }
+.login-divider::before, .login-divider::after { content: ''; height: 1px; flex: 1; background: var(--line); }
+.login-divider span { white-space: nowrap; }
+.login-code-actions { margin-top: 5px; display: flex; justify-content: center; gap: 18px; }
+.login-code-actions .text-action:disabled { color: var(--muted); cursor: wait; }
+#clerk-captcha { margin-top: 8px; justify-self: center; }
 .organizer-otp-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 .organizer-otp-fieldset .field-label { padding: 0; }
 .organizer-otp-grid { margin-top: 8px; display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 9px; }

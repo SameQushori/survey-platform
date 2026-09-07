@@ -1,6 +1,6 @@
 # Vecta 1.0 — Release Notes
 
-Дата release candidate: 2026-09-06
+Дата release candidate: 2026-09-07
 
 ## Что изменилось
 
@@ -13,10 +13,10 @@ Vecta 1.0 полностью заменяет прежнюю Survey Platform. Н
 - полноценный редактор, immutable publication versions и publish checklist;
 - открытый/контролируемый participant access, server-authoritative attempts и autosave;
 - results dashboard, question analytics, attempt details и защищённый CSV;
-- открытая регистрация организаторов по email OTP, автоматическое личное пространство и revocable sessions;
+- открытая регистрация организаторов через Clerk (Google или email-код), автоматическое личное пространство и tenant-safe sessions;
 - Cloudflare Worker + Static Assets + D1 вместо Firebase;
 - Turnstile, rate limiting, tenant authorization, security headers и audit log;
-- 67 автоматических тестов и GitHub Actions quality gate;
+- 60 автоматических тестов и GitHub Actions quality gate;
 - атомарные environment-specific Cloudflare deploy-команды и release-скан на secrets/local/legacy artifacts.
 
 ## Breaking changes
@@ -31,9 +31,9 @@ Vecta 1.0 полностью заменяет прежнюю Survey Platform. Н
 
 Код и отдельная production D1 готовы. До production Worker deploy обязательны:
 
-- ручной staging OTP UAT владельца;
+- ручной staging Clerk UAT владельца: email, Google, logout и tenant isolation;
 - production Turnstile hostnames и secrets;
-- подтверждённый Brevo sender, API key и успешный staging OTP UAT;
+- собственный домен, Clerk Production instance и production OAuth/keys;
 - реальный Core Web Vitals trace;
 - production smoke и подтверждение merge владельцем.
 

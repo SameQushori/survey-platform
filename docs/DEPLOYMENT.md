@@ -1,17 +1,17 @@
 # Vecta Deployment and Rollback Runbook
 
-Обновлено: 2026-09-06
+Обновлено: 2026-09-07
 
 ## Контуры
 
-| Контур | Public Worker | Organizer Worker | D1 |
-| --- | --- | --- | --- |
-| Staging | `vecta-staging-public` | `vecta-staging-organizer` | `vecta-staging` |
-| Production | `vecta-public` | `vecta-organizer` | `vecta-production` |
+| Контур | Public Worker | Organizer Worker | D1 | Organizer identity |
+| --- | --- | --- | --- | --- |
+| Staging | `vecta-staging-public` | `vecta-staging-organizer` | `vecta-staging` | Clerk Development |
+| Production | `vecta-public` | `vecta-organizer` | `vecta-production` | Clerk Production после подключения домена |
 
-Staging и production не разделяют D1. Все environment bindings хранятся в `wrangler.jsonc`; secrets — только в Cloudflare.
+Staging и production не разделяют D1. Bindings хранятся в `wrangler.jsonc`, secrets — только в Cloudflare.
 
-## Обязательные предпроверки
+## Предпроверки
 
 ```powershell
 npm.cmd ci
@@ -19,90 +19,68 @@ npm.cmd run quality
 npm.cmd exec wrangler -- whoami
 ```
 
-Проверить, что `git status --ignored --short` не показывает secrets, дампы, `.wrangler`, `dist`, coverage или AI artifacts как tracked/staged.
+Проверить `git status --ignored --short`: secrets, `.env*`, `.dev.vars*`, дампы D1, `.wrangler`, `dist`, coverage и AI/Codex artifacts не должны быть tracked или staged.
 
 ## D1
 
-Production D1 уже создана и прописана в конфигурации. Для новой среды:
-
 ```powershell
-npm.cmd exec wrangler -- d1 migrations apply vecta-production --remote --config wrangler.jsonc --env production-organizer
-npm.cmd exec wrangler -- d1 migrations list vecta-production --remote --config wrangler.jsonc --env production-organizer
+npm.cmd exec wrangler -- d1 migrations apply vecta-staging --remote --config wrangler.jsonc --env staging-organizer
+npm.cmd exec wrangler -- d1 migrations list vecta-staging --remote --config wrangler.jsonc --env staging-organizer
 ```
 
-Первый owner создаётся `scripts/seed-production-owner.sql`, где email намеренно `NULL`. Реальный email задаётся отдельной remote SQL-командой и никогда не записывается в Git.
+Для production заменить имя базы и environment на `vecta-production` / `production-organizer`. Перед потенциально destructive migration сделать remote export в путь вне репозитория. Миграции forward-only.
 
-Перед потенциально destructive изменением:
+## Secrets
 
-```powershell
-npm.cmd exec wrangler -- d1 export vecta-production --remote --config wrangler.jsonc --env production-organizer --output .\vecta-production-backup.sql
-```
-
-Backup хранить за пределами репозитория и удалить локальную копию после переноса в защищённое хранилище.
-
-## Turnstile и email
-
-Turnstile widget должен разрешать точные production hostnames:
-
-- `vecta-public.alimbekov1234567890.workers.dev`
-- `vecta-organizer.alimbekov1234567890.workers.dev`
-
-Secrets вводятся интерактивно отдельно для каждого Worker. Не передавать значения аргументом команды и не вставлять в файлы:
+Participant secrets задаются отдельно для Public и Organizer Worker:
 
 ```powershell
-npm.cmd exec wrangler -- secret put TURNSTILE_SECRET --config wrangler.jsonc --env production-public
-npm.cmd exec wrangler -- secret put ATTEMPT_TOKEN_SECRET --config wrangler.jsonc --env production-public
-
-npm.cmd exec wrangler -- secret put TURNSTILE_SECRET --config wrangler.jsonc --env production-organizer
-npm.cmd exec wrangler -- secret put ATTEMPT_TOKEN_SECRET --config wrangler.jsonc --env production-organizer
-npm.cmd exec wrangler -- secret put AUTH_TOKEN_SECRET --config wrangler.jsonc --env production-organizer
-npm.cmd exec wrangler -- secret put AUTH_EMAIL_FROM --config wrangler.jsonc --env production-organizer
-npm.cmd exec wrangler -- secret put BREVO_API_KEY --config wrangler.jsonc --env production-organizer
+npm.cmd exec wrangler -- secret put TURNSTILE_SECRET --config wrangler.jsonc --env staging-public
+npm.cmd exec wrangler -- secret put ATTEMPT_TOKEN_SECRET --config wrangler.jsonc --env staging-public
+npm.cmd exec wrangler -- secret put TURNSTILE_SECRET --config wrangler.jsonc --env staging-organizer
+npm.cmd exec wrangler -- secret put ATTEMPT_TOKEN_SECRET --config wrangler.jsonc --env staging-organizer
 ```
 
-`ATTEMPT_TOKEN_SECRET` и `AUTH_TOKEN_SECRET` — независимые случайные значения минимум 32 bytes. Staging использует Brevo и подтверждённый Gmail sender без собственного домена. После успешного staging UAT переключить `production-organizer` в `wrangler.jsonc` на `AUTH_EMAIL_PROVIDER=brevo`, указать тот же подтверждённый sender, выполнить `npm.cmd run cf:typegen` и только затем задавать production `BREVO_API_KEY`/деплоить. Resend остаётся rollback-адаптером, но `onboarding@resend.dev` не подходит для открытой регистрации.
+Clerk нужен только Organizer Worker:
+
+```powershell
+npm.cmd exec wrangler -- secret put CLERK_SECRET_KEY --config wrangler.jsonc --env staging-organizer
+npm.cmd exec wrangler -- secret put CLERK_PUBLISHABLE_KEY --config wrangler.jsonc --env staging-organizer
+```
+
+Secrets вводятся интерактивно; значения нельзя передавать аргументами команды. Client bundle получает соответствующий `VITE_CLERK_PUBLISHABLE_KEY` из локального игнорируемого environment или CI secret.
 
 ## Сборка и deploy
 
-Cloudflare Vite plugin flatten-ит выбранный environment в `dist/vecta/wrangler.json`. Поэтому environment выбирается на build, а deploy запускается **без** `--env`.
-
-Public:
+Cloudflare Vite plugin flatten-ит выбранный environment в `dist/vecta/wrangler.json`; deploy запускается без дополнительного `--env`.
 
 ```powershell
-npm.cmd run deploy:production:public -- --dry-run
-npm.cmd run deploy:production:public
+npm.cmd run deploy:staging:public -- --dry-run
+npm.cmd run deploy:staging:organizer -- --dry-run
+npm.cmd run deploy:staging:public
+npm.cmd run deploy:staging:organizer
 ```
 
-Organizer:
-
-```powershell
-npm.cmd run deploy:production:organizer -- --dry-run
-npm.cmd run deploy:production:organizer
-```
-
-Каждая команда сама собирает нужный environment непосредственно перед deploy, поэтому flattened output другого Worker не может быть опубликован по ошибке.
+Каждая команда сначала собирает конкретный environment. Production-команды разрешены только после создания Clerk Production instance, настройки собственного домена и установки production keys.
 
 ## Smoke после deploy
 
-1. Оба `/api/health` возвращают `200` и request ID.
+1. Оба `/api/health` возвращают `200` и `X-Request-Id`.
 2. Public `/login` переводит на Organizer hostname.
 3. Anonymous Organizer `/api/v1/session` возвращает `401`.
-4. Новый email проходит Turnstile, получает OTP, автоматически создаёт личное пространство и входит в `/app`; повторное использование OTP отклоняется.
-5. Создать черновик, проверить autosave/reload, publish и одноразовую выдачу code/QR.
-6. Участник проходит open attempt, ответы восстанавливаются после reload, submit идемпотентен.
-7. Organizer видит результат и скачивает безопасный CSV.
-8. Logout отзывает только organizer session; participant exit завершает только attempt.
+4. Email-код и Google создают Clerk session и приводят в `/app`.
+5. Первый вход нового аккаунта создаёт одно пустое личное пространство; второй вход не создаёт дубликат.
+6. Два разных аккаунта не видят данные друг друга.
+7. Черновик сохраняется после reload, публикация выдаёт code/QR, participant attempt завершается, результат и CSV доступны организатору.
+8. Logout завершает Clerk session; participant exit завершает только попытку.
 9. Проверить desktop 1440×1024 и mobile 390×844, клавиатуру и отсутствие console errors.
 
 ## Rollback
 
-Перед deploy записать текущий version ID из Cloudflare. При ошибке выполнить rollback через Workers dashboard → Deployments → нужная предыдущая версия → Rollback, затем повторить health/auth smoke.
-
-D1 migrations являются forward-only. Текущие migrations additive/compatible; откат Worker не требует удаления таблиц. Никогда не выполнять destructive rollback D1 без проверенного backup и отдельного migration plan.
+Перед deploy записать текущий Worker version ID. При ошибке вернуть предыдущую версию через Workers Dashboard → Deployments → Rollback и повторить health/auth smoke. Не удалять D1-таблицы auth во время rollback.
 
 ## Observability
 
 - Workers Observability включён с sampling rate `1`.
-- Логи auth не должны содержать email, OTP, raw tokens или provider body.
-- Проверять `organizer_login_email_failed`, его поле `provider`, HTTP 5xx/429 и D1 errors по request ID. Email, OTP и provider response body в логах быть не должно.
-- После стабилизации снизить sampling только отдельным осознанным решением.
+- Логи не должны содержать Clerk JWT, secret keys, email-коды, invitation tokens или participant attempt tokens.
+- Проверять HTTP 401/403/5xx, ошибки Clerk verification/profile lookup, D1 provisioning и request ID.

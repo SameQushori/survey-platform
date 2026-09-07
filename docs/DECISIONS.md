@@ -1,5 +1,15 @@
 # Vecta — Decision Log
 
+## 2026-09-07 — Clerk для открытой organizer-регистрации
+
+- Decision: Clerk заменяет собственный email OTP/session runtime, Brevo/Resend adapters и organizer Turnstile.
+- Sign-in: доступны Google и шестизначный email-код в кастомном интерфейсе Vecta; Clerk Organizations отключены.
+- Provisioning: любой подтверждённый Clerk user при первом запросе получает отдельную D1-организацию и membership `organizer`; общей Super Admin-роли и allow-list нет.
+- Authorization: Clerk подтверждает identity, а D1 остаётся источником истины для membership и tenant boundary. `authorizedParties` ограничен точным Organizer origin.
+- Abuse protection: organizer bot protection и лимиты обслуживает Clerk. Cloudflare Turnstile и Rate Limiting остаются в публичном participant flow.
+- Production gate: development instance допустим для staging; Clerk Production и production deploy запрещены до подключения собственного домена.
+- Supersedes: решения 2026-09-05/06 о собственном OTP, Brevo/Resend sender и organizer Turnstile больше не определяют runtime; они сохранены ниже как история.
+
 ## 2026-09-06 — Brevo для staging OTP и подтверждённая доставка
 
 - Decision: staging переключается с ограниченного sandbox sender Resend на Brevo Transactional Email; Resend adapter остаётся для обратного переключения.

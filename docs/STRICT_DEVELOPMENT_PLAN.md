@@ -374,7 +374,7 @@
 
 ## Phase 11 — Cloudflare Staging and Production
 
-Статус: **автономная часть завершена 2026-09-06; внешние gates отложены владельцем**. Staging развёрнут; production D1, migrations, environment-конфигурация и атомарные dry-run deploy-команды готовы. OTP UAT, production secrets/Turnstile hostnames, Core Web Vitals и реальный production deploy требуют внешнего доступа/решения. Evidence: `docs/PHASE_11_STAGING.md`, `docs/DEPLOYMENT.md`.
+Статус: **Clerk-интеграция завершена локально 2026-09-07; staging secrets/deploy/UAT и production domain остаются внешними gates**. Production D1, environment-конфигурация и атомарные deploy-команды готовы. Clerk Development используется только для staging; production требует собственного домена и Clerk Production instance. Evidence: `docs/PHASE_11_STAGING.md`, `docs/DEPLOYMENT.md`.
 
 ### Работы
 

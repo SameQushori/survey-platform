@@ -14,6 +14,7 @@ import {
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { useAuth, useClerk, useSignIn, useSignUp } from '@clerk/react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -37,6 +38,7 @@ import {
   Eye,
   FileText,
   GearSix,
+  GoogleLogo,
   HardHat,
   House,
   Laptop,
@@ -92,7 +94,7 @@ import {
 } from './domain';
 import { RevisionSaveQueue } from './revisionQueue';
 import { clearOrganizerOtpDigit, emptyOrganizerOtp, fillOrganizerOtp, normalizeOrganizerOtp, ORGANIZER_OTP_LENGTH } from './otpCode';
-import { abandonParticipantAttempt, ApiRequestError, closePublication, createAssessment, createInvitationBatch, createParticipantAttempt, downloadResultsCsv, getAssessmentDraft, getAssessments, getDistribution, getInvitations, getOrganizerAttemptDetail, getOrganizerAttempts, getOrganizerLoginUrl, getOrganizerSession, getParticipantAttempt, getPublicRuntimeConfig, getQuestionAnalysis, getResultsOverview, logoutOrganizer, publishAssessment, reopenPublication, requestOrganizerLoginCode, resolvePublication, reviseAssessment, revokeInvitation, rotatePublicationCode, saveParticipantAnswer, startOrganizerLogin, submitParticipantAttempt, updateAssessmentDraft, verifyOrganizerLoginCode, type LocalIdentityRole } from './api';
+import { abandonParticipantAttempt, ApiRequestError, closePublication, configureOrganizerTokenProvider, createAssessment, createInvitationBatch, createParticipantAttempt, downloadResultsCsv, getAssessmentDraft, getAssessments, getDistribution, getInvitations, getOrganizerAttemptDetail, getOrganizerAttempts, getOrganizerLoginUrl, getOrganizerSession, getParticipantAttempt, getPublicRuntimeConfig, getQuestionAnalysis, getResultsOverview, publishAssessment, reopenPublication, resolvePublication, reviseAssessment, revokeInvitation, rotatePublicationCode, saveParticipantAnswer, startOrganizerLogin, submitParticipantAttempt, updateAssessmentDraft, type LocalIdentityRole } from './api';
 import { requiresOrganizerHandoff } from './organizerLogin';
 import type { AssessmentDraftDTO, AssessmentListItemDTO, AttemptStateDTO, CreatedInvitationDTO, DistributionDTO, InvitationDTO, OrganizerAttemptDetailDTO, OrganizerAttemptListItemDTO, OrganizerSessionDTO, ParticipantResultDTO, PublicAssessmentDTO, PublishAssessmentResponse, QuestionAnalysisDTO, QuestionAnalysisItemDTO, ResolvedPublicationDTO, ResultsOverviewDTO, SaveAnswerRequest } from '../../shared/contracts';
 import './vecta.css';
@@ -774,10 +776,11 @@ function NavItem({ to, icon: NavIcon, end = false, children }: { to: string; ico
 
 function ProfileMenu({ onClose }: { onClose: () => void }) {
   const session = useAuthSession();
+  const { signOut } = useClerk();
   return (
     <div className="profile-menu" role="menu">
       <div className="profile-menu-head"><strong>{session.user.displayName}</strong><span>{session.user.email}</span><span>{session.memberships[0]?.organizationName ?? 'Vecta'}</span></div>
-      <button role="menuitem" autoFocus onClick={() => { onClose(); void logoutOrganizer(); }}><SignOut aria-hidden />Выйти</button>
+      <button role="menuitem" autoFocus onClick={() => { onClose(); void signOut({ redirectUrl: '/' }); }}><SignOut aria-hidden />Выйти</button>
     </div>
   );
 }
@@ -1400,27 +1403,38 @@ function SystemPanel({ kind, title, copy, action }: { kind: 'loading' | 'empty' 
   return <section className={`system-panel system-${kind}`} aria-live="polite">{kind === 'loading' ? <span className="loading-ring" aria-hidden /> : <span className={`soft-icon ${kind === 'error' ? 'soft-icon-orange' : 'soft-icon-blue'}`}>{kind === 'error' ? <WarningCircle aria-hidden /> : <ClipboardText aria-hidden />}</span>}<h2>{title}</h2><p>{copy}</p>{action}</section>;
 }
 
+function clerkErrorMessage(reason: unknown): string {
+  if (typeof reason !== 'object' || reason === null) return 'Не удалось войти. Повторите попытку.';
+  const code = 'code' in reason && typeof reason.code === 'string' ? reason.code : '';
+  if (code.includes('code_incorrect')) return 'Неверный код. Проверьте цифры и попробуйте снова.';
+  if (code.includes('expired')) return 'Срок действия кода истёк. Запросите новый код.';
+  if (code.includes('too_many')) return 'Слишком много попыток. Подождите немного и повторите.';
+  if (code.includes('captcha')) return 'Не удалось пройти автоматическую проверку. Обновите страницу и повторите.';
+  return 'message' in reason && typeof reason.message === 'string'
+    ? reason.message
+    : 'Не удалось войти. Повторите попытку.';
+}
+
 function OrganizerLoginDialog() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signIn, fetchStatus: signInFetchStatus } = useSignIn();
+  const { signUp, fetchStatus: signUpFetchStatus } = useSignUp();
   const dialogRef = useRef<HTMLElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const otpRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const localButtonRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
   const copyId = useId();
   const [step, setStep] = useState<'email' | 'code'>('email');
+  const [flow, setFlow] = useState<'sign-in' | 'sign-up'>('sign-in');
   const [email, setEmail] = useState('');
   const [codeDigits, setCodeDigits] = useState<string[]>(emptyOrganizerOtp);
-  const [challengeId, setChallengeId] = useState('');
-  const [turnstileToken, setTurnstileToken] = useState('');
-  const [turnstileVersion, setTurnstileVersion] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const onTurnstileToken = useCallback((token: string) => setTurnstileToken(token), []);
   const code = codeDigits.join('');
+  const busy = submitting || signInFetchStatus === 'fetching' || signUpFetchStatus === 'fetching';
   const close = useCallback(() => { void navigate('/'); }, [navigate]);
-  useDialogFocus(close, dialogRef, import.meta.env.DEV ? localButtonRef : inputRef);
+  useDialogFocus(close, dialogRef, inputRef);
 
   const destination = typeof location.state === 'object'
     && location.state !== null
@@ -1430,6 +1444,35 @@ function OrganizerLoginDialog() {
     ? location.state.from
     : '/app';
 
+  const assertClerkResult = (result: { error: unknown | null }) => {
+    if (result.error) throw result.error;
+  };
+
+  const sendEmailCode = async (normalizedEmail: string) => {
+    assertClerkResult(await signIn.create({ identifier: normalizedEmail, signUpIfMissing: true }));
+    if (signIn.isTransferable) {
+      assertClerkResult(await signUp.create({ transfer: true }));
+      assertClerkResult(await signUp.verifications.sendEmailCode());
+      setFlow('sign-up');
+      return;
+    }
+    assertClerkResult(await signIn.emailCode.sendCode());
+    setFlow('sign-in');
+  };
+
+  const finishAuthentication = async (normalizedCode: string) => {
+    if (flow === 'sign-up') {
+      assertClerkResult(await signUp.verifications.verifyEmailCode({ code: normalizedCode }));
+      if (signUp.status !== 'complete') throw new Error('Регистрация требует дополнительного шага. Повторите вход или выберите Google.');
+      assertClerkResult(await signUp.finalize());
+    } else {
+      assertClerkResult(await signIn.emailCode.verifyCode({ code: normalizedCode }));
+      if (signIn.status !== 'complete') throw new Error('Вход требует дополнительного шага. Повторите вход или выберите Google.');
+      assertClerkResult(await signIn.finalize());
+    }
+    void navigate(destination, { replace: true });
+  };
+
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
@@ -1437,27 +1480,34 @@ function OrganizerLoginDialog() {
     try {
       if (step === 'email') {
         const normalized = email.trim().toLowerCase();
-        if (!/^\S+@\S+\.\S+$/.test(normalized)) { setError('Введите корректный рабочий email'); return; }
-        if (!turnstileToken) { setError('Завершите защитную проверку'); return; }
-        const challenge = await requestOrganizerLoginCode(normalized, turnstileToken);
+        if (!/^\S+@\S+\.\S+$/.test(normalized)) { setError('Введите корректный email'); return; }
+        await sendEmailCode(normalized);
         setEmail(normalized);
-        setChallengeId(challenge.challengeId);
         setStep('code');
-        setTurnstileToken('');
         window.setTimeout(() => inputRef.current?.focus(), 0);
       } else {
         const normalized = code.replace(/\D/g, '');
-        if (normalized.length !== 6) { setError('Введите шестизначный код'); return; }
-        await verifyOrganizerLoginCode(challengeId, normalized);
-        void navigate(destination, { replace: true });
+        if (normalized.length !== ORGANIZER_OTP_LENGTH) { setError('Введите шестизначный код'); return; }
+        await finishAuthentication(normalized);
       }
     } catch (reason) {
-      setError(reason instanceof ApiRequestError ? reason.title ?? 'Не удалось войти' : 'Не удалось войти');
-        if (step === 'email') {
-          setTurnstileToken('');
-          setTurnstileVersion((value) => value + 1);
-        }
+      setError(clerkErrorMessage(reason));
     } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const signInWithGoogle = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      assertClerkResult(await signIn.sso({
+        strategy: 'oauth_google',
+        redirectUrl: new URL(destination, window.location.origin).toString(),
+        redirectCallbackUrl: new URL('/login', window.location.origin).toString(),
+      }));
+    } catch (reason) {
+      setError(clerkErrorMessage(reason));
       setSubmitting(false);
     }
   };
@@ -1504,15 +1554,28 @@ function OrganizerLoginDialog() {
     }
   };
 
-  const localLogin = () => { void navigate(destination, { replace: true }); };
   const changeEmail = () => {
+    void signIn.reset();
+    void signUp.reset();
     setStep('email');
     setCodeDigits(emptyOrganizerOtp());
-    setChallengeId('');
     setError('');
-    setTurnstileToken('');
-    setTurnstileVersion((value) => value + 1);
     window.setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  const resendCode = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      if (flow === 'sign-up') assertClerkResult(await signUp.verifications.sendEmailCode());
+      else assertClerkResult(await signIn.emailCode.sendCode());
+      setCodeDigits(emptyOrganizerOtp());
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+    } catch (reason) {
+      setError(clerkErrorMessage(reason));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -1522,19 +1585,15 @@ function OrganizerLoginDialog() {
         <button className="icon-button public-dialog-close" onClick={close} aria-label="Закрыть"><X aria-hidden /></button>
         <span className="soft-icon soft-icon-blue"><ShieldCheck aria-hidden /></span>
         <p className="eyebrow">Вход и регистрация</p>
-        <h2 id={titleId}>{step === 'email' ? 'Продолжите по email' : 'Введите код из письма'}</h2>
-        <p id={copyId} className="public-dialog-copy">{step === 'email' ? 'Отправим одноразовый код. Если аккаунта ещё нет, после подтверждения создадим личное рабочее пространство.' : `Мы отправили шестизначный код на ${email}. Он действует 10 минут.`}</p>
-        {import.meta.env.DEV ? (
-          <button ref={localButtonRef} className="button button-primary button-wide" onClick={localLogin}>Продолжить локально</button>
-        ) : (
-          <form className="organizer-login-form" onSubmit={submit} noValidate>
-            {step === 'email' ? <><label className="field-label" htmlFor="organizer-email">Email</label><input ref={inputRef} id="organizer-email" type="email" className={error ? 'text-input input-error' : 'text-input'} autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" aria-describedby={error ? 'organizer-login-error' : 'organizer-email-help'} /><p className="field-help" id="organizer-email-help">Новый аккаунт создастся после подтверждения почты</p><TurnstileWidget key={turnstileVersion} action="organizer_login" onToken={onTurnstileToken} /></> : <><fieldset className="organizer-otp-fieldset"><legend className="field-label">Код из письма</legend><div className={error ? 'organizer-otp-grid has-error' : 'organizer-otp-grid'}>{codeDigits.map((digit, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; if (index === 0) inputRef.current = element; }} type="text" className={digit ? 'organizer-otp-cell is-filled' : 'organizer-otp-cell'} autoComplete={index === 0 ? 'one-time-code' : 'off'} inputMode="numeric" pattern="[0-9]*" maxLength={index === 0 ? ORGANIZER_OTP_LENGTH : 1} value={digit} onChange={(event) => updateOtpCell(index, event.target.value)} onPaste={(event) => pasteOtp(index, event)} onKeyDown={(event) => navigateOtp(index, event)} onFocus={(event) => event.currentTarget.select()} aria-label={`Цифра ${index + 1} из ${ORGANIZER_OTP_LENGTH}`} aria-invalid={Boolean(error)} aria-describedby={error ? 'organizer-login-error' : 'organizer-code-help'} />)}</div></fieldset><p className="field-help" id="organizer-code-help">Не пересылайте код другим людям</p><div className="login-delivery-note"><EnvelopeSimple aria-hidden /><p><strong>Письмо не видно?</strong><span>Проверьте папку «Спам» — первое сообщение иногда попадает туда.</span></p></div></>}
-            {error && <p className="field-error" id="organizer-login-error" role="alert">{error}</p>}
-            <button className="button button-primary button-wide" disabled={submitting || (step === 'email' ? !turnstileToken : code.length !== 6)}>{submitting ? (step === 'email' ? 'Отправляем…' : 'Проверяем…') : (step === 'email' ? 'Получить код' : 'Войти')}</button>
-            {step === 'code' && <button className="text-action login-change-email" type="button" onClick={changeEmail}>Изменить email или отправить новый код</button>}
-          </form>
-        )}
-        <p className="login-privacy-note"><ShieldCheck aria-hidden />Код одноразовый. Сессия завершится автоматически через 12 часов.</p>
+        <h2 id={titleId}>{step === 'email' ? 'Начните работать в Vecta' : 'Введите код из письма'}</h2>
+        <p id={copyId} className="public-dialog-copy">{step === 'email' ? 'Войдите через Google или получите одноразовый код. Для нового пользователя мы автоматически создадим личное рабочее пространство.' : `Мы отправили шестизначный код на ${email}.`}</p>
+        <form className="organizer-login-form" onSubmit={submit} noValidate>
+          {step === 'email' ? <><button className="button button-google button-wide" type="button" onClick={() => { void signInWithGoogle(); }} disabled={busy}><GoogleLogo aria-hidden weight="bold" />Продолжить с Google</button><div className="login-divider"><span>или по email</span></div><label className="field-label" htmlFor="organizer-email">Email</label><input ref={inputRef} id="organizer-email" type="email" className={error ? 'text-input input-error' : 'text-input'} autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@example.com" aria-describedby={error ? 'organizer-login-error' : 'organizer-email-help'} /><p className="field-help" id="organizer-email-help">Регистрация открыта — приглашение администратора не требуется</p><div id="clerk-captcha" /></> : <><fieldset className="organizer-otp-fieldset"><legend className="field-label">Код из письма</legend><div className={error ? 'organizer-otp-grid has-error' : 'organizer-otp-grid'}>{codeDigits.map((digit, index) => <input key={index} ref={(element) => { otpRefs.current[index] = element; if (index === 0) inputRef.current = element; }} type="text" className={digit ? 'organizer-otp-cell is-filled' : 'organizer-otp-cell'} autoComplete={index === 0 ? 'one-time-code' : 'off'} inputMode="numeric" pattern="[0-9]*" maxLength={index === 0 ? ORGANIZER_OTP_LENGTH : 1} value={digit} onChange={(event) => updateOtpCell(index, event.target.value)} onPaste={(event) => pasteOtp(index, event)} onKeyDown={(event) => navigateOtp(index, event)} onFocus={(event) => event.currentTarget.select()} aria-label={`Цифра ${index + 1} из ${ORGANIZER_OTP_LENGTH}`} aria-invalid={Boolean(error)} aria-describedby={error ? 'organizer-login-error' : 'organizer-code-help'} />)}</div></fieldset><p className="field-help" id="organizer-code-help">Не пересылайте код другим людям</p><div className="login-delivery-note"><EnvelopeSimple aria-hidden /><p><strong>Письмо не видно?</strong><span>Проверьте папку «Спам» — первое сообщение иногда попадает туда.</span></p></div></>}
+          {error && <p className="field-error" id="organizer-login-error" role="alert">{error}</p>}
+          <button className="button button-primary button-wide" disabled={busy || (step === 'email' ? !email.trim() : code.length !== ORGANIZER_OTP_LENGTH)}>{busy ? (step === 'email' ? 'Продолжаем…' : 'Проверяем…') : (step === 'email' ? 'Получить код' : 'Войти')}</button>
+          {step === 'code' && <div className="login-code-actions"><button className="text-action" type="button" onClick={changeEmail} disabled={busy}>Изменить email</button><button className="text-action" type="button" onClick={() => { void resendCode(); }} disabled={busy}>Отправить новый код</button></div>}
+        </form>
+        <p className="login-privacy-note"><ShieldCheck aria-hidden />Авторизация защищена Clerk. Пароль Vecta не хранит.</p>
       </section>
     </div>
   );
@@ -1542,6 +1601,7 @@ function OrganizerLoginDialog() {
 
 function PublicSystemPage({ kind }: { kind: 'login' | 'denied' | 'not-found' }) {
   const navigate = useNavigate();
+  const { signOut } = useClerk();
   const organizerLoginTarget = getOrganizerLoginUrl();
   const handoffOrganizerLogin = kind === 'login' && requiresOrganizerHandoff(window.location.origin, organizerLoginTarget);
   useEffect(() => {
@@ -1550,7 +1610,7 @@ function PublicSystemPage({ kind }: { kind: 'login' | 'denied' | 'not-found' }) 
   if (kind === 'login') return handoffOrganizerLogin ? <OnboardingPage /> : <><OnboardingPage /><OrganizerLoginDialog /></>;
   const content = kind === 'denied' ? { eyebrow: 'Нет доступа', title: 'Рабочее пространство недоступно', copy: 'Не удалось создать или открыть личное пространство. Завершите сессию и повторите регистрацию.', action: 'Завершить сессию' } : { eyebrow: 'Ошибка 404', title: 'Такой страницы нет', copy: 'Возможно, ссылка устарела или адрес был скопирован не полностью.', action: 'На главную Vecta' };
   const action = () => {
-    if (kind === 'denied') void logoutOrganizer();
+    if (kind === 'denied') void signOut({ redirectUrl: '/' });
     else void navigate('/');
   };
   return <><OnboardingPage /><PublicOverlayDialog eyebrow={content.eyebrow} title={content.title} copy={content.copy} icon={kind === 'denied' ? ShieldCheck : MagnifyingGlass} tone={kind === 'denied' ? 'orange' : 'blue'} primaryLabel={content.action} primaryStyle="secondary" onPrimary={action} onClose={() => navigate('/')} /></>;
@@ -1792,10 +1852,20 @@ function useAuthSession(): OrganizerSessionDTO {
 function AuthGate({ role, children }: { role: LocalIdentityRole; children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
   const [state, setState] = useState<{ session: OrganizerSessionDTO | null; status: 'loading' | 'ready' | 'unauthorized' | 'forbidden' | 'error' }>({ session: null, status: 'loading' });
 
   useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      configureOrganizerTokenProvider(null);
+      setState({ session: null, status: 'unauthorized' });
+      return;
+    }
+
     let active = true;
+    configureOrganizerTokenProvider(getToken);
+    setState((current) => current.status === 'loading' ? current : { session: null, status: 'loading' });
     getOrganizerSession(role)
       .then((session) => {
         if (!active) return;
@@ -1811,8 +1881,11 @@ function AuthGate({ role, children }: { role: LocalIdentityRole; children: React
             : 'error';
         setState({ session: null, status });
       });
-    return () => { active = false; };
-  }, [role]);
+    return () => {
+      active = false;
+      configureOrganizerTokenProvider(null);
+    };
+  }, [getToken, isLoaded, isSignedIn, role]);
 
   if (state.status === 'loading') return <div className="public-system-page"><main><SystemPanel kind="loading" title="Проверяем доступ" copy="Получаем защищённую сессию Vecta…" /></main></div>;
   if (state.status === 'unauthorized') return <Navigate to="/login" replace state={{ from: location.pathname }} />;

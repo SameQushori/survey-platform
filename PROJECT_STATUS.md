@@ -1,111 +1,91 @@
-# Vecta — Project Status / Handoff
+# Vecta — Project Status
 
-Последнее обновление: 2026-09-06
+Последнее обновление: 2026-09-07
+Ветка: `feat/vecta-rebuild`
+Pull request: <https://github.com/SameQushori/survey-platform/pull/1>
 
-Версия: **1.0.0 release candidate**
+## Текущее состояние
 
-Текущая фаза: **вся автономная разработка завершена; Phase 11 оставлена на внешние release-gates**
+Vecta 1.0 реализована как breaking-change ревамп Survey Platform. Firebase и legacy UI удалены, старые данные не мигрируются. Runtime: React 19 + TypeScript + Cloudflare Workers/Static Assets + D1.
 
-Этот файл — каноническая точка продолжения в другом чате. Сначала прочитать его, затем `docs/STRICT_DEVELOPMENT_PLAN.md`, `docs/DECISIONS.md` и проверить фактический `git status`.
+Organizer authentication переводится на Clerk:
 
-## Зафиксированный продукт
+- открытая регистрация без Super Admin и allow-list;
+- Google или шестизначный email-код в кастомном UI Vecta;
+- автоматическое создание личного D1 workspace и membership `organizer` при первом входе;
+- Clerk проверяет identity/session, D1 проверяет tenant membership;
+- Cloudflare Turnstile удалён из organizer login и сохранён для participant flow;
+- собственные OTP, Brevo/Resend adapters и organizer session routes удалены из runtime.
 
-- Бренд: **Vecta**.
-- Assessment-first платформа корпоративного тестирования, основной язык MVP — русский.
-- Backend/hosting: Cloudflare Workers + Static Assets, D1, Turnstile и Rate Limiting.
-- Organizer identity: открытая регистрация по email → шестизначный OTP → личное пространство → 12-часовая revocable HttpOnly session.
-- Общей Super Admin-роли и платформенной панели администрирования нет; каждый подтверждённый пользователь — организатор только своего пространства.
-- Participant modes: общий код/ссылка и контролируемое одноразовое приглашение.
-- Результат участника скрыт по умолчанию; при включении показываются только score/maxScore.
-- Типы вопросов MVP: один вариант, несколько вариантов, шкала.
-- Старые Firebase-опросы и аккаунты не мигрируются.
+Локальный Clerk application `Vecta` привязан через CLI, `.env.local` получен и игнорируется Git. Clerk Development подходит для staging. Production заблокирован до подключения собственного домена и создания Clerk Production instance.
 
-## Выполнено в коде
+## Реализованный продукт
 
-- Полностью удалены legacy JSX/Firebase runtime, setup и зависимости.
-- Реализованы responsive onboarding, self-service регистрация, organizer workspace, Kanban, authoring, publishing, participant lifecycle, results, analytics и CSV.
-- Доска поддерживает forward/reopen/revise без изменения immutable исторических публикаций и результатов.
-- Реализованы email OTP, автоматическое provision личного пространства, HMAC-only challenges/sessions, бесплатный Turnstile, IP/email rate limits, CSRF/same-origin boundary и tenant-safe authorization.
-- Исправлены autosave race, публикация, participant exit, auth handoff, modal states, шестиячеечный OTP и обратные lifecycle-переходы.
-- Удалён production URL-переключатель mock loading/empty/error states.
-- Dependency stack обновлён в пределах текущих major; полный audit — 0 vulnerabilities.
-- Добавлен GitHub Actions quality gate и документация deployment/rollback/release.
-- Добавлены атомарные Cloudflare deploy-команды: каждая сама собирает и публикует только выбранный environment.
-- Удалены оставшиеся legacy-отчёты, небезопасные Firebase rules и старый SurveyPro HTML-макет; повторное попадание этих файлов блокирует release-скан.
+- Responsive onboarding и единый вход/регистрация.
+- Drag-and-drop доска «Черновики → Запущены → Завершены» с согласованными обратными переходами.
+- Редактор трёх типов вопросов, последовательный autosave и optimistic revision.
+- Immutable publication versions, общий code/QR и контролируемые invitations.
+- Восстанавливаемые participant attempts, server deadline, autosave ответов, abandon и idempotent submit.
+- Results overview, question analytics, attempt details, history и безопасный CSV.
+- Tenant authorization, audit log, rate limits, participant Turnstile и HMAC/JOSE credentials.
+- Firebase/legacy retirement, CI quality gate, release scan и Cloudflare deployment scripts.
 
-## Автоматический release gate
+## Последняя автоматическая проверка
 
-На 2026-09-06 проходит:
-
-- `npm run typecheck`;
-- `npm run verify:types`;
-- `npm run lint`;
-- 32 unit tests в 8 файлах;
-- 35 Worker/D1 integration tests в 6 файлах;
-- `npm run build`;
-- `npm audit --audit-level=moderate` — 0 vulnerabilities;
-- `npm run verify:release` — tracked-файлы и build проверены на secrets, private keys, локальные артефакты и retired legacy paths;
-- все четыре staging/production public/organizer deploy-команды проходят `--dry-run`;
-- локальный Worker startup profile: bundle 320.44 KiB / gzip 67.03 KiB, active startup CPU 13.9 ms.
+- `npm run typecheck` — проходит.
+- `npm run lint` — проходит.
+- Unit tests — 32/32 проходят.
+- Worker/D1 integration tests — 27/27 проходят, включая idempotent Clerk workspace provisioning.
+- `npm run build` — проходит.
+- Полный `npm run quality` нужно повторить после финального обновления документов и deployment.
 
 ## Cloudflare inventory
 
 ### Staging
 
-- D1: `vecta-staging`, ID `fcbe1d68-f3ec-4d9b-966e-202a288fe8fc`, 6 migrations / 18 tables; legacy privileged users: `0`, foreign keys clean.
-- Public: <https://vecta-staging-public.alimbekov1234567890.workers.dev>, version `fcf05337-9b5c-4410-8d2b-fde5b4261680`.
-- Organizer: <https://vecta-staging-organizer.alimbekov1234567890.workers.dev>, version `702e7110-7566-4fe2-85fa-1b614b8a6ed2`.
-- Единственный owner email исправлен на подтверждённый пользователем адрес; PII не хранится в Git.
+- D1: `vecta-staging`, ID `fcbe1d68-f3ec-4d9b-966e-202a288fe8fc`, migrations `0001`–`0006`.
+- Public: <https://vecta-staging-public.alimbekov1234567890.workers.dev>.
+- Organizer: <https://vecta-staging-organizer.alimbekov1234567890.workers.dev>.
+- Public version: `4c7cf89f-4a53-4236-a250-6a9d01dd64d7`.
+- Organizer Clerk version: `cc9a1b6e-749b-4c81-b9d2-b92c87e4410d`.
+- Remote smoke: оба health `200` с request ID, Organizer `/login` `200`, anonymous `/api/v1/session` `401`, опубликованная auth-модалка содержит Google и email flow.
 
-### Production — подготовлено, но Worker deploy намеренно не выполнен
+### Production
 
-- D1: `vecta-production`, ID `44ad08b1-d7e0-49d7-ad25-9594f50a1227`, регион WEUR.
-- Применены все 6 migrations, создано 18 application tables, legacy privileged users: `0`, `PRAGMA foreign_key_check` чистый.
-- Существующий production owner сохранён как обычный Organizer; migration `0006` обнуляет legacy platform role.
-- `wrangler.jsonc` содержит отдельные `production-public` / `production-organizer`, Worker names `vecta-public` / `vecta-organizer`, отдельные rate-limit namespaces и D1 binding.
-- Production Workers не публикуются до настройки secrets и успешного OTP UAT: deploy без Turnstile/рабочего email provider создал бы заведомо неработающий или небезопасный вход.
+- D1: `vecta-production`, ID `44ad08b1-d7e0-49d7-ad25-9594f50a1227`.
+- Конфигурация Workers подготовлена, но production deploy намеренно не выполняется.
+- Блокер: нет собственного домена для Clerk Production instance и production OAuth/DNS setup.
 
-## Внешние release-gates
+## Строгий оставшийся маршрут
 
-1. Подтвердить выбранный sender в Brevo, интерактивно установить staging `AUTH_EMAIL_FROM` и `BREVO_API_KEY`, затем развернуть новую Organizer version.
-2. Owner проходит staging вход на отдельный тестовый адрес: Turnstile → письмо → OTP → `/app` → logout → повторный вход.
-3. После успеха удалить устаревший staging secret `ORGANIZER_ACCESS_CODE`.
-4. Добавить production hostnames в Turnstile, переключить production config на проверенный Brevo sender и интерактивно задать production secrets.
-5. Снять LCP/CLS/INP через Chrome DevTools MCP или вручную в DevTools. В текущей среде DevTools MCP не подключён, поэтому метрики не вымышлялись.
+1. Выполнить Clerk staging UAT по `docs/ORGANIZER_AUTH_RUNBOOK.md`: email, Google, logout, новый аккаунт и cross-account isolation.
+2. Исправить только подтверждённые UAT-дефекты; новые фичи не добавлять.
+3. Снять responsive/accessibility/performance smoke.
+4. Закоммитить, отправить ветку, дождаться CI и обновить PR.
+5. Отдельно подключить домен, Clerk Production instance и production keys.
+6. После успешного production dry-run/deploy выполнить smoke и rollback readiness check.
+7. Merge PR — только после явного решения владельца.
 
-## Отложенные внешние действия
+## Что проверить вручную после staging deploy
 
-По решению владельца от 2026-09-06 эти пункты не блокируют продолжение разработки и оставлены на совместный финальный проход:
-
-1. Brevo sender/API-key, новый deploy Organizer staging и OTP UAT по `docs/ORGANIZER_AUTH_RUNBOOK.md`.
-2. Production Turnstile hostnames и secrets, переключение Organizer на проверенный email provider.
-3. Реальный Core Web Vitals trace: Chrome DevTools MCP в текущей среде отсутствует, поэтому метрики не вымышлялись.
-4. Production deploy/smoke и проверка rollback после успешного auth UAT.
-5. Review и merge PR #1 только по решению владельца.
+1. `/login`: Google, email, шесть OTP-ячеек, вставка кода, resend и подсказка про «Спам».
+2. Новый аккаунт: после входа открывается пустой `/app`; reload сохраняет вход.
+3. Создать черновик → добавить вопросы → дождаться «Сохранено» → reload → опубликовать.
+4. Переместить тест вперёд и назад по разрешённым этапам.
+5. Пройти тест как участник, проверить выход с расходом попытки и условный показ результата.
+6. Вернуться организатором: результаты и CSV принадлежат только его workspace.
+7. Выйти через профиль: `/app` снова требует вход, participant state не затрагивается.
+8. Повторить основные экраны на 390×844 и проверить клавиатурный focus.
 
 ## Фазы
 
-- [x] Phase 0 — Product Rules Freeze
-- [x] Phase 1 — Repository Baseline and Hygiene
-- [x] Phase 2 — Domain, API and Database Contract
-- [x] Phase 3 — UX Logic and Visual Direction
-- [x] Phase 4 — Cloudflare Foundation
-- [x] Phase 5 — Identity and tenant authorization
-- [x] Phase 6 — Assessment Authoring and Publishing
-- [x] Phase 7 — Participant Attempt
-- [x] Phase 8 — Results, Analytics and Export
-- [x] Phase 9 — Hardening and Quality Gate
-- [x] Phase 10 — Firebase Retirement
-- [ ] Phase 11 — автономная часть закрыта; внешний OTP/performance UAT и production secrets/deploy отложены владельцем
-- [x] Phase 12 — repository finalized; release-скан встроен в CI, branch/PR/profile README подготовлены
-
-Профильный репозиторий `SameQushori/SameQushori` обновлён: Vecta добавлена первой в Featured Projects, commit `9442d3f` отправлен в `main`.
-
-Основной репозиторий: PR <https://github.com/SameQushori/survey-platform/pull/1> открыт из `feat/vecta-rebuild` в `main`. PR не merge-ился; актуальный commit и CI фиксируются после каждого release-изменения.
+- [x] Phase 0–10 — product rules, repository, domain/API/D1, design, Cloudflare foundation, authorization, authoring, participant, results, hardening и Firebase retirement.
+- [ ] Phase 11 — Clerk staging deployed; ручной auth UAT и performance smoke остаются.
+- [ ] Phase 12 — финальный commit/push/CI и release handoff; профильный README уже обновлён, Vecta стоит первой в Featured Projects.
 
 ## Правила продолжения
 
 - Не добавлять новые MVP-фичи без решения владельца.
-- Не ослаблять Turnstile/auth ради deploy.
-- Не сохранять email владельца, secrets, `.env*`, `.dev.vars*`, D1 dumps, `.wrangler`, coverage или AI/Codex artifacts.
-- После каждого release-действия обновлять этот файл фактическими URL/version IDs и результатами проверок.
+- Не использовать Clerk Development keys в production.
+- Не сохранять email владельца, secrets, `.env*`, `.dev.vars*`, D1 dumps, `.wrangler`, coverage или AI/Codex artifacts в Git.
+- После каждого deploy обновлять этот файл фактическими version IDs и результатами проверок.

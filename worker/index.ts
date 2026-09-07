@@ -3,7 +3,6 @@ import { routeAuthorizedApi } from "./organizer";
 import { authenticateRequest, IdentityError } from "./auth";
 import { AuthorizationError, resolveSession } from "./session";
 import { routeParticipantApi } from "./participant";
-import { routeOrganizerAuth } from "./organizer-auth";
 
 async function healthResponse(env: Env, requestId: string): Promise<Response> {
   const databaseCheck = await env.DB.prepare("SELECT 1 AS ok").first<{ ok: number }>();
@@ -41,12 +40,9 @@ async function routeApi(request: Request, env: Env, ctx: ExecutionContext, reque
     const participantResponse = await routeParticipantApi(request, env, requestId);
     if (participantResponse) return participantResponse;
 
-    const organizerAuthResponse = await routeOrganizerAuth(request, env, ctx, requestId);
-    if (organizerAuthResponse) return organizerAuthResponse;
-
     try {
       const identity = await authenticateRequest(request, env);
-      const session = await resolveSession(env.DB, identity);
+      const session = await resolveSession(env, identity, requestId);
       return await routeAuthorizedApi(request, env, session, requestId);
     } catch (error) {
       if (error instanceof IdentityError) {

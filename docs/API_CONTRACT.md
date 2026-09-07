@@ -82,13 +82,10 @@ Response соответствует `CreateAttemptResponse`. `assessment.questio
 
 | Method | Route | Доступ | Назначение |
 |---|---|---|---|
-| `POST` | `/auth/request-code` | Public + Turnstile + rate limits | Принять любой валидный email, создать provisional user при необходимости и вернуть `202` только после принятия OTP почтовым provider |
-| `POST` | `/auth/verify-code` | Public + rate limit | Однократно проверить OTP; при первом входе создать личную организацию/membership и выдать HttpOnly session cookie |
-| `POST` | `/auth/logout` | Session + same-origin marker | Отозвать текущую server-side session и очистить cookie |
-| `GET` | `/session` | Organizer session | Текущая identity и memberships |
+| `GET` | `/session` | Clerk session | Проверить Clerk token, при первом входе provision личного workspace и вернуть identity/memberships |
 | `GET` | `/organizations/:organizationId/workspace` | Organizer member | Проверенный tenant context для shell |
 
-Целевой вход: открытая регистрация по email, бесплатный Turnstile, одноразовый шестизначный код на 10 минут и лимиты запросов по IP/email. Worker синхронно ждёт принятия письма provider API: отказ/timeout возвращает `502 email_delivery_failed` и очищает challenge/provisional user. D1 хранит только HMAC digest OTP и session token. После успеха Worker выдаёт 12-часовую `__Host-vecta_session` cookie (`Secure`, `HttpOnly`, `SameSite=Lax`), а права повторно проверяются по D1 membership. Платформенной Super Admin-роли и соответствующих endpoints нет.
+Открытую регистрацию, Google OAuth, email-коды и organizer session lifecycle обслуживает Clerk. SPA передаёт session token как Bearer credential; Worker проверяет подпись и точный `authorizedParty`. При первом входе Worker атомарно создаёт D1 user, личную организацию, membership и audit event. Права на ресурсы всегда повторно проверяются по D1 membership. Платформенной Super Admin-роли и auth endpoints собственного производства нет.
 
 ## Assessment authoring
 

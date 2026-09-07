@@ -15,7 +15,7 @@ Vecta — русскоязычная assessment-first платформа для 
 - Публикации с неизменяемыми версиями, открытым кодом/QR или одноразовыми приглашениями.
 - Восстанавливаемые попытки, серверный дедлайн, последовательное сохранение ответов и идемпотентная отправка.
 - Результаты, анализ вопросов, история публикаций, поиск, пагинация и защищённый CSV-экспорт.
-- Открытая регистрация по email: после подтверждения шестизначного кода пользователь получает личное пространство организатора.
+- Открытая регистрация через Clerk: Google или шестизначный email-код; после первого входа пользователь автоматически получает личное пространство организатора.
 - Строгая tenant/membership authorization без общей привилегированной Super Admin-роли.
 - Responsive UI, keyboard drag-and-drop, focus-trapped dialogs и доступные таблицы/графики.
 
@@ -24,7 +24,7 @@ Vecta — русскоязычная assessment-first платформа для 
 - React 19, TypeScript strict, React Router, dnd-kit, Manrope и Phosphor Icons.
 - Cloudflare Worker + Static Assets; `/api/*` всегда исполняется сервером.
 - Cloudflare D1 с последовательными миграциями и immutable publication snapshots.
-- Бесплатный Cloudflare Turnstile, Cloudflare Rate Limiting, HMAC/JOSE, HttpOnly sessions и provider-agnostic email OTP (Brevo/Resend).
+- Clerk для organizer identity и сессий; бесплатный Cloudflare Turnstile, Rate Limiting и HMAC/JOSE для публичного participant flow.
 - Vitest для unit-тестов и Cloudflare Vitest plugin для Worker/D1 integration-тестов.
 
 ```text
@@ -32,8 +32,8 @@ Browser ── Static Assets ── React SPA
    │
    └── /api/* ── Cloudflare Worker ── D1
                     │
-                    ├── Turnstile / Rate Limiting
-                    └── Brevo / Resend (organizer OTP)
+                    ├── Clerk (organizer identity)
+                    └── Turnstile / Rate Limiting (participants)
 ```
 
 Основные каталоги:
@@ -51,12 +51,15 @@ Browser ── Static Assets ── React SPA
 
 ```bash
 npm ci
+npx clerk login
+npx clerk link
+npx clerk env pull
 npm run db:migrate:local
 npm run db:seed:local
 npm run dev
 ```
 
-Приложение и Worker запускаются одной командой. Health-check: `http://localhost:5173/api/health`. Локальные identity разрешены только для `localhost`/`.test` при `APP_ENV=local`.
+`clerk env pull` создаёт игнорируемый `.env.local` с `VITE_CLERK_PUBLISHABLE_KEY` и `CLERK_SECRET_KEY`; значения нельзя добавлять в Git. Приложение и Worker запускаются одной командой. Health-check: `http://localhost:5173/api/health`. Локальный Worker принимает тестовую identity только для `localhost`/`.test` при `APP_ENV=local`, а интерфейс входа использует Clerk development instance.
 
 ## Проверки
 
@@ -89,10 +92,10 @@ Production D1 и конфигурация подготовлены отдель�
 ## Безопасность
 
 - В Git запрещены `.env*`, `.dev.vars*`, API keys, private keys, service-account JSON, локальные D1 и generated artifacts.
-- Коды доступа, invitation tokens, OTP и organizer session tokens хранятся только как HMAC digests.
+- Коды доступа, invitation tokens и participant attempt tokens хранятся только как HMAC digests; organizer passwords, OTP и sessions обслуживает Clerk и они не попадают в D1.
 - Participant API не возвращает answer key; балл показывается только при явной настройке организатора.
 - CSV нейтрализует spreadsheet formula injection и ограничен 10 000 строками.
-- Organizer mutations требуют authenticated membership и same-origin контекст.
+- Organizer mutations требуют валидный Clerk session token, точный `authorizedParty`, active membership и same-origin контекст.
 - Production не использует общий access code или локальную identity-заглушку.
 
 Подробнее: [Security Threat Model](docs/SECURITY_THREAT_MODEL.md), [Organizer Auth Runbook](docs/ORGANIZER_AUTH_RUNBOOK.md) и [Permission Matrix](docs/PERMISSION_MATRIX.md).
