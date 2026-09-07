@@ -34,7 +34,7 @@ Organizer authentication переводится на Clerk:
 
 - `npm run typecheck` — проходит.
 - `npm run lint` — проходит.
-- Unit tests — 36/36 проходят, включая Clerk environment/build guard.
+- Unit tests — 39/39 проходят, включая Clerk environment/build guard и auth transfer/callback routing.
 - Worker/D1 integration tests — 28/28 проходят, включая idempotent Clerk workspace provisioning.
 - `npm run build` — проходит.
 - Полный `npm run quality` — проходит; release scan проверил 97 repository и 73 build-файла, `npm audit` нашёл 0 уязвимостей.
@@ -46,10 +46,11 @@ Organizer authentication переводится на Clerk:
 - D1: `vecta-staging`, ID `fcbe1d68-f3ec-4d9b-966e-202a288fe8fc`, migrations `0001`–`0006`.
 - Public: <https://vecta-staging-public.alimbekov1234567890.workers.dev>.
 - Organizer: <https://vecta-staging-organizer.alimbekov1234567890.workers.dev>.
-- Public version: `56117351-0f3d-4744-b9dc-137b17fc04b2`.
-- Organizer Clerk version: `e1c368f7-451d-47c9-94f0-aea51afe2a58`.
-- Remote smoke: оба health `200` с request ID, Organizer `/login` `200`, anonymous и invalid-token `/api/v1/session` получают `401`.
+- Public version: `fc9382b5-0436-4c79-a903-2684d8cf533c`.
+- Organizer Clerk version: `e645a8e5-a7d4-43b3-9dc8-e031154cc12a`.
+- Remote smoke: оба health `200` с request ID, Organizer `/sso-callback` `200`, anonymous `/api/v1/session` получает `401`.
 - Исправлен блокирующий Clerk CSP: оба Worker отдают точный Frontend API origin, Clerk protection origins и не разрешают `unsafe-inline` scripts; после deploy `clerk-js` загрузился без новой ошибки.
+- Исправлен открытый signup: email-код переводит отсутствующего пользователя из sign-in в sign-up и завершает сессию; Google OAuth возвращается на отдельный Clerk callback, который финализирует сессию перед `/app`.
 - Responsive/accessibility smoke `/login`: 390×844 и 1280×720 без горизонтального overflow, диалог остаётся в viewport, у полей и кнопок есть accessible names.
 
 ### Production
@@ -69,7 +70,7 @@ Organizer authentication переводится на Clerk:
 
 ## Что проверить вручную после staging deploy
 
-1. `/login`: Google, email, шесть OTP-ячеек, вставка кода, resend и подсказка про «Спам».
+1. `/login`: новый email автоматически регистрируется после OTP; Google проходит через краткий экран «Завершаем вход» и открывает `/app`; также проверить вставку кода, resend и подсказку про «Спам».
 2. Новый аккаунт: после входа открывается пустой `/app`; reload сохраняет вход.
 3. Создать черновик → добавить вопросы → дождаться «Сохранено» → reload → опубликовать.
 4. Переместить тест вперёд и назад по разрешённым этапам.

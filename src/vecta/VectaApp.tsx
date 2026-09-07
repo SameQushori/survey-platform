@@ -14,7 +14,7 @@ import {
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
-import { useAuth, useClerk, useSignIn, useSignUp } from '@clerk/react';
+import { HandleSSOCallback, useAuth, useClerk, useSignIn, useSignUp } from '@clerk/react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -95,7 +95,7 @@ import {
 import { RevisionSaveQueue } from './revisionQueue';
 import { clearOrganizerOtpDigit, emptyOrganizerOtp, fillOrganizerOtp, normalizeOrganizerOtp, ORGANIZER_OTP_LENGTH } from './otpCode';
 import { abandonParticipantAttempt, ApiRequestError, closePublication, configureOrganizerTokenProvider, createAssessment, createInvitationBatch, createParticipantAttempt, downloadResultsCsv, getAssessmentDraft, getAssessments, getDistribution, getInvitations, getOrganizerAttemptDetail, getOrganizerAttempts, getOrganizerLoginUrl, getOrganizerSession, getParticipantAttempt, getPublicRuntimeConfig, getQuestionAnalysis, getResultsOverview, publishAssessment, reopenPublication, resolvePublication, reviseAssessment, revokeInvitation, rotatePublicationCode, saveParticipantAnswer, startOrganizerLogin, submitParticipantAttempt, updateAssessmentDraft, type LocalIdentityRole } from './api';
-import { requiresOrganizerHandoff } from './organizerLogin';
+import { clerkErrorCode, organizerAuthDestination, requiresOrganizerHandoff, requiresSignUpTransfer } from './organizerLogin';
 import type { AssessmentDraftDTO, AssessmentListItemDTO, AttemptStateDTO, CreatedInvitationDTO, DistributionDTO, InvitationDTO, OrganizerAttemptDetailDTO, OrganizerAttemptListItemDTO, OrganizerSessionDTO, ParticipantResultDTO, PublicAssessmentDTO, PublishAssessmentResponse, QuestionAnalysisDTO, QuestionAnalysisItemDTO, ResolvedPublicationDTO, ResultsOverviewDTO, SaveAnswerRequest } from '../../shared/contracts';
 import './vecta.css';
 
@@ -1405,11 +1405,12 @@ function SystemPanel({ kind, title, copy, action }: { kind: 'loading' | 'empty' 
 
 function clerkErrorMessage(reason: unknown): string {
   if (typeof reason !== 'object' || reason === null) return 'Не удалось войти. Повторите попытку.';
-  const code = 'code' in reason && typeof reason.code === 'string' ? reason.code : '';
+  const code = clerkErrorCode(reason);
   if (code.includes('code_incorrect')) return 'Неверный код. Проверьте цифры и попробуйте снова.';
   if (code.includes('expired')) return 'Срок действия кода истёк. Запросите новый код.';
   if (code.includes('too_many')) return 'Слишком много попыток. Подождите немного и повторите.';
   if (code.includes('captcha')) return 'Не удалось пройти автоматическую проверку. Обновите страницу и повторите.';
+  if (code === 'sign_up_if_missing_transfer') return 'Подтверждаем регистрацию нового пользователя. Повторите ввод кода.';
   return 'message' in reason && typeof reason.message === 'string'
     ? reason.message
     : 'Не удалось войти. Повторите попытку.';
@@ -1430,19 +1431,23 @@ function OrganizerLoginDialog() {
   const [email, setEmail] = useState('');
   const [codeDigits, setCodeDigits] = useState<string[]>(emptyOrganizerOtp);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => typeof location.state === 'object'
+    && location.state !== null
+    && 'authError' in location.state
+    && typeof location.state.authError === 'string'
+    ? location.state.authError
+    : '');
   const code = codeDigits.join('');
   const busy = submitting || signInFetchStatus === 'fetching' || signUpFetchStatus === 'fetching';
   const close = useCallback(() => { void navigate('/'); }, [navigate]);
   useDialogFocus(close, dialogRef, inputRef);
 
-  const destination = typeof location.state === 'object'
+  const destination = organizerAuthDestination(typeof location.state === 'object'
     && location.state !== null
     && 'from' in location.state
     && typeof location.state.from === 'string'
-    && location.state.from.startsWith('/')
     ? location.state.from
-    : '/app';
+    : undefined);
 
   const assertClerkResult = (result: { error: unknown | null }) => {
     if (result.error) throw result.error;
@@ -1466,7 +1471,15 @@ function OrganizerLoginDialog() {
       if (signUp.status !== 'complete') throw new Error('Регистрация требует дополнительного шага. Повторите вход или выберите Google.');
       assertClerkResult(await signUp.finalize());
     } else {
-      assertClerkResult(await signIn.emailCode.verifyCode({ code: normalizedCode }));
+      const verification = await signIn.emailCode.verifyCode({ code: normalizedCode });
+      if (requiresSignUpTransfer(verification.error, signIn.isTransferable)) {
+        assertClerkResult(await signUp.create({ transfer: true }));
+        if (signUp.status !== 'complete') throw new Error('Не удалось завершить регистрацию. Запросите новый код или выберите Google.');
+        assertClerkResult(await signUp.finalize());
+        void navigate(destination, { replace: true });
+        return;
+      }
+      assertClerkResult(verification);
       if (signIn.status !== 'complete') throw new Error('Вход требует дополнительного шага. Повторите вход или выберите Google.');
       assertClerkResult(await signIn.finalize());
     }
@@ -1501,10 +1514,12 @@ function OrganizerLoginDialog() {
     setSubmitting(true);
     setError('');
     try {
+      const callbackUrl = new URL('/sso-callback', window.location.origin);
+      callbackUrl.searchParams.set('return_to', destination);
       assertClerkResult(await signIn.sso({
         strategy: 'oauth_google',
         redirectUrl: new URL(destination, window.location.origin).toString(),
-        redirectCallbackUrl: new URL('/login', window.location.origin).toString(),
+        redirectCallbackUrl: callbackUrl.toString(),
       }));
     } catch (reason) {
       setError(clerkErrorMessage(reason));
@@ -1597,6 +1612,27 @@ function OrganizerLoginDialog() {
       </section>
     </div>
   );
+}
+
+function OrganizerSsoCallbackPage() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const destination = organizerAuthDestination(new URLSearchParams(location.search).get('return_to'));
+  const returnToLogin = () => {
+    void navigate('/login', {
+      replace: true,
+      state: {
+        from: destination,
+        authError: 'Не удалось завершить вход через Google. Повторите попытку или используйте email.',
+      },
+    });
+  };
+
+  return <div className="public-system-page"><main><SystemPanel kind="loading" title="Завершаем вход" copy="Подтверждаем аккаунт и открываем рабочее пространство…" /><HandleSSOCallback navigateToApp={({ decorateUrl }) => {
+    const target = decorateUrl(destination);
+    if (target.startsWith('http')) window.location.assign(target);
+    else void navigate(target, { replace: true });
+  }} navigateToSignIn={returnToLogin} navigateToSignUp={returnToLogin} /></main></div>;
 }
 
 function PublicSystemPage({ kind }: { kind: 'login' | 'denied' | 'not-found' }) {
@@ -1895,5 +1931,5 @@ function AuthGate({ role, children }: { role: LocalIdentityRole; children: React
 }
 
 export default function VectaApp() {
-  return <BrowserRouter><Routes><Route path="/" element={<OnboardingPage />} /><Route path="/login" element={<PublicSystemPage kind="login" />} /><Route path="/access-denied" element={<PublicSystemPage kind="denied" />} /><Route path="/join" element={<ParticipantJoinPage />} /><Route path="/attempt/:attemptId" element={<ParticipantAttemptLayout />}><Route path="instructions" element={<ParticipantInstructionsPage />} /><Route path="questions/:position" element={<ParticipantQuestionPage />} /><Route path="review" element={<ParticipantReviewPage />} /><Route path="complete" element={<ParticipantCompletePage />} /></Route><Route path="/app" element={<AuthGate role="organizer"><WorkspaceLayout /></AuthGate>}><Route index element={<OverviewPage />} /><Route path="tests" element={<TestBoardPage />} /><Route path="tests/:testId/edit" element={<QuestionEditorPage />} /><Route path="tests/:testId/preview" element={<AssessmentPreviewPage />} /><Route path="tests/:testId/publish" element={<PublicationChecklistPage />} /><Route path="publications/:publicationId/distribute" element={<DistributionPage />} /><Route path="results" element={<ResultsPage />} /></Route><Route path="/admin/*" element={<Navigate to="/app" replace />} /><Route path="*" element={<PublicSystemPage kind="not-found" />} /></Routes></BrowserRouter>;
+  return <BrowserRouter><Routes><Route path="/" element={<OnboardingPage />} /><Route path="/login" element={<PublicSystemPage kind="login" />} /><Route path="/sso-callback" element={<OrganizerSsoCallbackPage />} /><Route path="/access-denied" element={<PublicSystemPage kind="denied" />} /><Route path="/join" element={<ParticipantJoinPage />} /><Route path="/attempt/:attemptId" element={<ParticipantAttemptLayout />}><Route path="instructions" element={<ParticipantInstructionsPage />} /><Route path="questions/:position" element={<ParticipantQuestionPage />} /><Route path="review" element={<ParticipantReviewPage />} /><Route path="complete" element={<ParticipantCompletePage />} /></Route><Route path="/app" element={<AuthGate role="organizer"><WorkspaceLayout /></AuthGate>}><Route index element={<OverviewPage />} /><Route path="tests" element={<TestBoardPage />} /><Route path="tests/:testId/edit" element={<QuestionEditorPage />} /><Route path="tests/:testId/preview" element={<AssessmentPreviewPage />} /><Route path="tests/:testId/publish" element={<PublicationChecklistPage />} /><Route path="publications/:publicationId/distribute" element={<DistributionPage />} /><Route path="results" element={<ResultsPage />} /></Route><Route path="/admin/*" element={<Navigate to="/app" replace />} /><Route path="*" element={<PublicSystemPage kind="not-found" />} /></Routes></BrowserRouter>;
 }

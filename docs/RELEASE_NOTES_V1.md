@@ -16,7 +16,7 @@ Vecta 1.0 полностью заменяет прежнюю Survey Platform. Н
 - открытая регистрация организаторов через Clerk (Google или email-код), автоматическое личное пространство и tenant-safe sessions;
 - Cloudflare Worker + Static Assets + D1 вместо Firebase;
 - Turnstile, rate limiting, tenant authorization, environment-specific Clerk CSP, security headers и audit log;
-- 64 автоматических теста и GitHub Actions quality gate;
+- 67 автоматических тестов и GitHub Actions quality gate;
 - атомарные environment-specific Cloudflare deploy-команды и release-скан на secrets/local/legacy artifacts.
 
 ## Breaking changes

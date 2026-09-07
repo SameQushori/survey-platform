@@ -22,7 +22,7 @@ Cloudflare Access и собственная email-доставка больше 
 ## Локальные доказательства
 
 - TypeScript и ESLint проходят.
-- 36 unit tests проходят, включая запрет смешивания Clerk Development/Production keys.
+- 39 unit tests проходят, включая запрет смешивания Clerk Development/Production keys и Clerk transfer/callback routing.
 - 28 Worker/D1 integration tests проходят.
 - Production build проходит.
 - Визуально проверен `/login`: фирменная модалка, Google, email, открытая регистрация и центрирование.
@@ -31,15 +31,16 @@ Cloudflare Access и собственная email-доставка больше 
 
 ## Опубликованные версии и smoke
 
-- Public: `56117351-0f3d-4744-b9dc-137b17fc04b2`.
-- Organizer: `e1c368f7-451d-47c9-94f0-aea51afe2a58`.
+- Public: `fc9382b5-0436-4c79-a903-2684d8cf533c`.
+- Organizer: `e645a8e5-a7d4-43b3-9dc8-e031154cc12a`.
 - `CLERK_SECRET_KEY` и `CLERK_PUBLISHABLE_KEY` установлены как staging Organizer secrets без вывода значений.
 - Оба health endpoint возвращают `200` и request ID.
-- Organizer `/login` возвращает `200`; anonymous `/api/v1/session` возвращает `401`.
+- Organizer `/sso-callback` возвращает SPA `200`; anonymous `/api/v1/session` возвращает `401`.
 - Remote UI содержит Google, email и открытую регистрацию.
 - Оба hostname отдают CSP с точным Clerk Development FAPI, `*.protect.clerk.com` и без `unsafe-inline` в `script-src`.
 - До исправления CSP браузер воспроизводимо блокировал `clerk-js`; после deploy новая загрузка завершилась ожидаемым Development-key warning без новой `failed_to_load_clerk_js` ошибки.
 - На 390×844 и 1280×720 нет горизонтального overflow; auth dialog остаётся в viewport, интерактивные элементы имеют accessible names.
+- После staging UAT обнаружены и исправлены два Clerk flow-дефекта: `sign_up_if_missing_transfer` теперь завершает регистрацию нового email, а Google SSO финализируется через отдельный `/sso-callback` вместо возврата в незавершённое окно входа.
 
 ## Незавершённые внешние действия
 
