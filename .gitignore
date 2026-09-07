@@ -12,6 +12,62 @@ dist
 dist-ssr
 *.local
 
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+!.dev.vars.*.example
+*.pem
+*.key
+service-account*.json
+firebase-adminsdk*.json
+
+# Cloudflare local state
+.wrangler/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Test and build artifacts
+coverage/
+test-results/
+playwright-report/
+blob-report/
+.vitest/
+.vite/
+*.tsbuildinfo
+*.cpuprofile
+
+# Local AI/agent working files (product documentation remains tracked)
+.codex/
+.agents/
+.claude/
+.cursor/
+.ai/
+ai-artifacts/
+imagegen-output/
+.profile-readme-worktree/
+
+# Retired Survey Platform / Firebase artifacts
+/CACHE_FIX.md
+/FIXES_SUMMARY.md
+/RESPONSIVE_IMPROVEMENTS.md
+/SURVEY_FIX.md
+/UI_IMPROVEMENTS.md
+/firestore.rules
+/survey_platform_homepage.html
+
+# Local design review evidence (the approved runtime asset stays tracked in src/assets)
+design/qa/*.png
+design/qa/*.jpg
+design/references/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
